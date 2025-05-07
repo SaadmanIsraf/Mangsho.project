@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mangsho - Admin Access (Enhanced Flair)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Base font size and settings */
+        html {
+            font-size: 18px; /* Base font size */
+            scroll-behavior: smooth; /* Smooth scrolling for anchor links */
+            font-family: 'Inter', sans-serif; /* Default font */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden; /* Prevent horizontal scroll */
+            background-color: #f1f5f9; /* slate-100 */
+        }
+
+        /* --- Animation Keyframes --- */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Animation for dashboard elements appearing */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Subtle bounce effect (can be applied selectively) */
+        @keyframes subtleBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        /* --- Header Styling --- */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 7%; /* Padding top/bottom and left/right */
+            background: #fff; /* White background */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Softer shadow */
+            position: sticky; /* Stick to the top on scroll */
+            top: 0;
+            z-index: 1000; /* Ensure header is above other content */
+            transition: box-shadow 0.3s ease; /* Smooth shadow transition */
+        }
+        .header .logo {
+            font-size: 2.2rem; /* Logo size */
+            font-weight: 700; /* Bold */
+            color: #1e293b; /* slate-800 */
+            text-decoration: none; /* Remove underline */
+            transition: transform 0.3s ease; /* Smooth scaling transition */
+        }
+        .header .logo:hover {
+            transform: scale(1.03); /* Slightly enlarge on hover */
+        }
+        .header .logo i {
+            color: #f97316; /* orange-500 - Icon color */
+            margin-right: 0.5rem; /* Space between icon and text */
+        }
+        .header .navbar a {
+            margin: 0 1rem; /* Spacing between nav links */
+            font-size: 1.1rem; /* Nav link font size */
+            color: #475569; /* slate-600 */
+            text-decoration: none;
+            position: relative; /* Needed for the underline effect */
+            transition: color 0.3s ease; /* Smooth color change */
+            padding-bottom: 0.3rem; /* Space for the underline */
+            font-weight: 500; /* Medium weight */
+        }
+        /* Underline effect for nav links */
+        .header .navbar a::after {
+            content: '';
+            position: absolute;
+            width: 0; /* Start with no width */
+            height: 2px; /* Underline thickness */
+            display: block;
+            margin-top: 5px; /* Space below text */
+            right: 0; /* Start animation from the right */
+            background: #f97316; /* Underline color */
+            transition: width 0.3s ease, left 0.3s ease; /* Animate width and position */
+        }
+        .header .navbar a:hover {
+            color: #f97316; /* Change text color on hover */
+        }
+        .header .navbar a:hover::after {
+             width: 100%; /* Expand underline to full width */
+             left: 0; /* Align underline to the left */
+             background-color: #f97316; /* Ensure color consistency */
+        }
+        /* Header icons (login/logout) */
+        .header .icons div {
+            font-size: 1.8rem; /* Icon size */
+            margin-left: 1rem; /* Space to the left */
+            color: #334155; /* slate-700 */
+            cursor: pointer; /* Indicate interactivity */
+            transition: color 0.3s ease, transform 0.3s ease; /* Smooth transitions */
+        }
+        .header .icons div:hover {
+            color: #f97316; /* Change color on hover */
+            transform: scale(1.1) rotate(5deg); /* Scale and slightly rotate on hover */
+        }
+
+        /* --- Login Form Styling --- */
+        .login-form {
+            position: absolute; /* Position relative to the header */
+            top: 115%; /* Position below the header */
+            right: -110%; /* Initially hidden off-screen to the right */
+            width: 380px; /* Form width */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
+            padding: 2rem; /* Inner spacing */
+            border-radius: 0.5rem; /* rounded-lg */
+            background: #fff; /* White background */
+            text-align: center; /* Center content */
+            transition: right 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* Smooth slide-in animation with easing */
+            z-index: 999; /* Ensure form is above navbar but below header */
+        }
+        /* Style for when the login form is active (visible) */
+        .login-form.active {
+            right: 2rem; /* Slide into view */
+        }
+        .login-form h3 {
+            font-size: 1.8rem; /* Title size */
+            text-transform: uppercase; /* Uppercase title */
+            color: #1e293b; /* slate-800 */
+            margin-bottom: 1.2rem; /* Space below title */
+            font-weight: 600; /* Semi-bold */
+        }
+        .login-form .box {
+            width: 100%; /* Full width input */
+            margin: 0.8rem 0; /* Vertical spacing */
+            background: #f1f5f9; /* slate-100 - Light background */
+            border-radius: 0.375rem; /* rounded-md */
+            padding: 1rem; /* Input padding */
+            font-size: 1rem; /* Input text size */
+            color: #334155; /* slate-700 - Input text color */
+            border: 1px solid #e2e8f0; /* slate-200 - Subtle border */
+            transition: border-color 0.3s ease, box-shadow 0.3s ease; /* Smooth focus transition */
+        }
+        /* Input focus style */
+        .login-form .box:focus {
+             outline: none; /* Remove default outline */
+             border-color: #f97316; /* Orange border on focus */
+             box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.3); /* Orange glow effect */
+        }
+        .login-form p {
+            font-size: 1rem; /* Text size for links */
+            padding: 0.6rem 0; /* Vertical padding */
+            color: #64748b; /* slate-500 */
+        }
+        .login-form p a {
+            color: #f97316; /* Orange link color */
+            text-decoration: underline; /* Underline links */
+            transition: color 0.3s ease; /* Smooth color change on hover */
+        }
+        .login-form p a:hover {
+             color: #ea580c; /* orange-600 - Darker orange on hover */
+        }
+
+        /* --- General Button Styling --- */
+        .btn {
+            margin-top: 1.2rem; /* Space above button */
+            display: inline-block; /* Allow setting width/padding */
+            padding: 0.8rem 2.5rem; /* Button padding */
+            font-size: 1.1rem; /* Button text size */
+            border-radius: 0.375rem; /* rounded-md */
+            border: 2px solid #334155; /* Default border */
+            color: #334155; /* Default text color */
+            cursor: pointer; /* Indicate interactivity */
+            background: transparent; /* Default transparent background */
+            text-decoration: none; /* Remove underline */
+            text-align: center; /* Center text */
+            font-weight: 600; /* Semi-bold */
+            transition: all 0.3s ease; /* Smooth transition for all properties */
+            position: relative; /* For potential pseudo-elements */
+            overflow: hidden; /* Contain effects within button bounds */
+            z-index: 1; /* Base stacking context */
+        }
+        /* Enhanced Button Hover Effect */
+        .btn:hover {
+            color: #fff; /* White text on hover */
+            border-color: #f97316; /* Orange border on hover */
+            background-color: #f97316; /* Orange background on hover */
+            transform: translateY(-3px); /* Lift button slightly */
+            box-shadow: 0 6px 12px rgba(249, 115, 22, 0.3); /* Orange shadow */
+        }
+
+        /* Specific Login Button Styles */
+        .login-form .btn {
+             width: 100%; /* Full width login button */
+             border-color: #f97316; /* Orange border */
+             color: #f97316; /* Orange text */
+             background-color: #fff; /* White background */
+        }
+         .login-form .btn:hover {
+             background: #f97316; /* Orange background on hover */
+             color: #fff; /* White text on hover */
+             box-shadow: 0 6px 12px rgba(249, 115, 22, 0.3); /* Orange shadow */
+         }
+
+        /* Home Section CTA Button Gradient */
+        .home .btn {
+            border: none; /* Remove border for gradient button */
+            color: #fff; /* White text */
+            background-image: linear-gradient(to right, #fb923c, #f97316, #ea580c); /* orange-400 to orange-600 gradient */
+            background-size: 200% auto; /* Prepare for hover animation */
+            transition: background-position 0.4s ease, transform 0.3s ease, box-shadow 0.3s ease; /* Smooth transitions */
+        }
+        .home .btn:hover {
+            background-position: right center; /* Shift gradient position on hover */
+            transform: translateY(-3px) scale(1.03); /* Lift and scale slightly */
+            box-shadow: 0 8px 16px rgba(249, 115, 22, 0.3); /* Enhanced orange shadow */
+        }
+
+
+        /* Hide admin-specific links by default */
+        .admin-link {
+            display: none;
+        }
+
+        /* Show admin links in the navbar when logged in (controlled by JS adding 'logged-in' class to header) */
+        .header.logged-in .navbar .admin-link { /* Added .header for specificity */
+             display: inline; /* Or inline-block if needed */
+        }
+
+        /* Login/Logout icon styling */
+         .header.logged-in #login-btn::before { /* Added .header for specificity */
+             content: "\f2f5"; /* Font Awesome logout icon unicode */
+             font-family: "Font Awesome 6 Free"; /* Specify Font Awesome font */
+             font-weight: 900; /* Use solid style */
+             color: #ef4444; /* red-500 - Make logout icon red */
+         }
+         .header.logged-in #login-btn.fa-user::before { /* Added .header for specificity */
+             content: "\f2f5";
+             font-family: "Font Awesome 6 Free";
+             font-weight: 900;
+             color: #ef4444; /* Keep it red */
+         }
+
+        /* --- Main Content Sections Styling --- */
+        .home {
+            min-height: 70vh; /* Minimum height */
+            display: flex;
+            align-items: center; /* Center content vertically */
+            justify-content: center; /* Center content horizontally */
+            background: url('image/front-banner.jpg') no-repeat center center/cover; /* Background image */
+            text-align: center; /* Center text */
+            padding: 2rem; /* Padding */
+            position: relative; /* Needed for the overlay */
+        }
+        .home::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.1); /* Very subtle dark overlay */
+            z-index: 1; /* Place overlay below content */
+        }
+
+        .home .content {
+            max-width: 750px; /* Max width for content box */
+            background: rgba(255, 255, 255, 0.92); /* Semi-transparent white background */
+            padding: 2.5rem 3rem; /* Padding inside the box */
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); /* Soft shadow */
+            animation: fadeIn 0.8s ease-out 0.2s forwards; /* Fade-in animation with delay */
+            opacity: 0; /* Start transparent for animation */
+            position: relative; /* Ensure content is above overlay */
+            z-index: 2; /* Place content above overlay */
+        }
+        .home h3 {
+            font-size: 3.2rem; /* Heading size */
+            color: #1e293b; /* slate-800 */
+            font-weight: 700; /* Bold */
+            line-height: 1.2; /* Line spacing */
+            margin-bottom: 0.5rem; /* Space below heading */
+        }
+        .home h3 span {
+            color: #f97316; /* Orange color for the span */
+        }
+        .home p {
+            font-size: 1.2rem; /* Paragraph text size */
+            color: #475569; /* slate-600 */
+            padding: 1rem 0 1.5rem 0; /* Vertical padding */
+            line-height: 1.6; /* Line spacing */
+        }
+
+        /* Features Section Styling */
+        .features {
+            padding: 4rem 7%; /* Section padding */
+            background-color: #fff; /* White background */
+        }
+        .heading {
+            text-align: center; /* Center heading */
+            padding-bottom: 2rem; /* Space below heading */
+            margin-bottom: 2.5rem; /* More space below heading */
+            font-size: 2.8rem; /* Heading size */
+            color: #1e293b; /* slate-800 */
+            font-weight: 700; /* Bold */
+            opacity: 0; /* Start transparent for animation */
+            animation: fadeIn 0.8s ease-out 0.2s forwards; /* Fade-in animation */
+        }
+        .heading span {
+            color: #f97316; /* Orange text */
+            background: #fff7ed; /* orange-50 - Light orange background */
+            padding: 0.5rem 1.8rem; /* Padding around the span */
+            border-radius: 0.5rem; /* rounded-lg */
+        }
+        .features .box-container {
+            display: grid; /* Use grid layout */
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); /* Responsive columns */
+            gap: 2.5rem; /* Gap between grid items */
+        }
+        .features .box {
+            padding: 2.5rem; /* Padding inside feature boxes */
+            background: #fff; /* White background */
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Soft shadow */
+            border: 1px solid #f1f5f9; /* slate-100 - Subtle border */
+            text-align: center; /* Center content */
+            transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth hover transitions */
+            opacity: 0; /* Start transparent for animation */
+            animation: fadeInUp 0.6s ease-out forwards; /* Fade-up animation */
+        }
+        .features .box:hover {
+            transform: translateY(-8px) scale(1.03); /* Lift and scale on hover */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.07); /* Enhanced shadow on hover */
+        }
+        .features .box:nth-child(1) { animation-delay: 0.3s; }
+        .features .box:nth-child(2) { animation-delay: 0.5s; }
+        .features .box:nth-child(3) { animation-delay: 0.7s; }
+
+        .features .box img {
+            height: 150px; /* Image height */
+            width: 150px; /* Image width */
+            margin-bottom: 1.5rem; /* Space below image */
+            object-fit: contain; /* Scale image while preserving aspect ratio */
+            background-color: #f8fafc; /* slate-50 - Placeholder background */
+            border-radius: 50%; /* Make image placeholder circular */
+            display: block; /* Ensure block layout */
+            margin-left: auto; /* Center horizontally */
+            margin-right: auto; /* Center horizontally */
+            line-height: 150px; /* Vertically center text */
+            color: #94a3b8; /* slate-400 - Placeholder text color */
+            font-size: 0.9rem; /* Placeholder text size */
+            text-align: center; /* Center placeholder text */
+            transition: transform 0.4s ease; /* Smooth image transform */
+        }
+        .features .box:hover img {
+            transform: scale(1.1) rotate(-5deg); /* Scale and rotate image on box hover */
+        }
+        .features .box h3 {
+            font-size: 1.6rem; /* Feature title size */
+            color: #1e293b; /* slate-800 */
+            margin-bottom: 0.8rem; /* Space below title */
+            font-weight: 600; /* Semi-bold */
+        }
+        .features .box p {
+            font-size: 1rem; /* Feature description size */
+            color: #475569; /* slate-600 */
+            line-height: 1.6; /* Line spacing */
+            margin-bottom: 1.5rem; /* Space below paragraph */
+        }
+
+        /* About Us Section */
+        #Us { /* Targeting the section by ID */
+            padding: 4rem 7%; /* Section padding */
+            background: #f8fafc; /* slate-50 - Very light gray background */
+        }
+        #Us .heading {
+             opacity: 0; /* Start transparent for animation */
+             animation: fadeIn 0.8s ease-out 0.2s forwards; /* Fade-in animation */
+        }
+        #Us p {
+            text-align: center; /* Center text */
+            color: #334155; /* slate-700 */
+            margin-top: 1.5rem; /* Space above paragraph */
+            max-width: 850px; /* Limit text width */
+            margin-left: auto; /* Center block */
+            margin-right: auto; /* Center block */
+            font-size: 1.15rem; /* Text size */
+            line-height: 1.8; /* Line spacing */
+            opacity: 0; /* Start transparent for animation */
+            animation: fadeIn 0.8s ease-out 0.4s forwards; /* Fade-in animation with delay */
+        }
+
+        /* --- Admin Dashboard Styling --- */
+        #admin-dashboard {
+            padding: 3rem 7%; /* Section padding */
+            background-color: #f1f5f9; /* slate-100 */
+            animation: fadeIn 0.5s ease-out; /* Fade-in animation */
+        }
+        .dashboard-card {
+            background-color: #fff; /* White background */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1.5rem; /* Card padding */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Soft shadow */
+            transition: transform 0.3s ease, box-shadow 0.3s ease; /* Smooth hover transitions */
+            display: flex; /* Use flexbox for layout */
+            align-items: center; /* Align items vertically */
+            gap: 1rem; /* Space between icon and content */
+            position: relative; /* Needed for the absolute positioned link overlay */
+            opacity: 0; /* Start transparent */
+            animation: fadeInUp 0.5s ease-out forwards; /* Fade-up animation */
+        }
+        #admin-dashboard .grid > div:nth-child(1) { animation-delay: 0.1s; }
+        #admin-dashboard .grid > div:nth-child(2) { animation-delay: 0.2s; }
+        #admin-dashboard .grid > div:nth-child(3) { animation-delay: 0.3s; }
+        #admin-dashboard .grid > div:nth-child(4) { animation-delay: 0.4s; }
+
+        .dashboard-card a.dashboard-card-link {
+            display: flex; /* Inherit flex properties */
+            align-items: center; /* Inherit alignment */
+            gap: 1rem; /* Inherit gap */
+            text-decoration: none; /* Remove underline */
+            color: inherit; /* Use parent text color */
+            position: static; /* Let the ::after pseudo-element handle the overlay */
+        }
+        .dashboard-card a.dashboard-card-link::after {
+            content: "";
+            position: absolute; /* Cover the parent card */
+            top: 0; right: 0; bottom: 0; left: 0;
+            z-index: 1; /* Place above card content but allow hover effects */
+            border-radius: inherit; /* Match card rounding */
+        }
+
+        .dashboard-card:hover {
+            transform: translateY(-5px); /* Lift card slightly more on hover */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -4px rgba(0, 0, 0, 0.07); /* Enhanced shadow */
+        }
+        .dashboard-card i {
+            font-size: 2.5rem; /* Icon size */
+            color: #f97316; /* Orange icon color */
+            width: 50px; /* Fixed width for alignment */
+            text-align: center; /* Center icon */
+            flex-shrink: 0; /* Prevent icon from shrinking */
+            transition: transform 0.3s ease; /* Smooth icon scaling */
+        }
+        .dashboard-card:hover i {
+            transform: scale(1.1); /* Scale icon on card hover */
+        }
+        .dashboard-card .card-content {
+            flex-grow: 1; /* Allow content to take remaining space */
+        }
+        .dashboard-card h4 {
+            font-size: 1.1rem; /* Card title size */
+            color: #64748b; /* slate-500 */
+            margin-bottom: 0.25rem; /* Space below title */
+            font-weight: 500; /* Medium weight */
+        }
+        .dashboard-card p.value {
+            font-size: 1.8rem; /* Main value size */
+            color: #1e293b; /* slate-800 */
+            font-weight: 600; /* Semi-bold */
+            line-height: 1.3; /* Adjust line height */
+        }
+        .dashboard-card p.sub-value {
+            font-size: 0.9rem; /* Sub-value text size */
+            color: #64748b; /* slate-500 */
+            font-weight: 500; /* Medium weight */
+            margin-top: 0.1rem; /* Small space above sub-value */
+        }
+
+        /* Quick Links Section (within Admin Dashboard) */
+        #admin-dashboard h2 { /* Style the "Quick Actions" heading */
+            opacity: 0; /* Start transparent for animation */
+            animation: fadeInUp 0.5s ease-out 0.5s forwards; /* Fade-up animation with delay */
+        }
+
+        .quick-link-card {
+             background-color: #fff; /* White background */
+             border-radius: 0.75rem; /* rounded-xl */
+             padding: 1.5rem; /* Card padding */
+             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Soft shadow */
+             text-align: center; /* Center content */
+             transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, color 0.3s ease; /* Smooth transitions for multiple properties */
+             text-decoration: none; /* Remove underline from link */
+             color: #334155; /* slate-700 - Default text color */
+             display: flex; /* Use flexbox */
+             flex-direction: column; /* Stack icon and text vertically */
+             align-items: center; /* Center items horizontally */
+             justify-content: center; /* Center items vertically */
+             gap: 0.75rem; /* Space between icon and text */
+             opacity: 0; /* Start transparent */
+             animation: fadeInUp 0.5s ease-out forwards; /* Fade-up animation */
+        }
+        #admin-dashboard .grid:last-of-type > a:nth-child(1) { animation-delay: 0.6s; }
+        #admin-dashboard .grid:last-of-type > a:nth-child(2) { animation-delay: 0.7s; }
+        #admin-dashboard .grid:last-of-type > a:nth-child(3) { animation-delay: 0.8s; }
+        #admin-dashboard .grid:last-of-type > a:nth-child(4) { animation-delay: 0.9s; }
+
+        .quick-link-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+        }
+        .quick-link-card:hover {
+             transform: translateY(-5px) scale(1.05); /* Lift and scale */
+             color: #fff; /* White text for all hover states */
+        }
+        #quick-link-sales:hover {
+            background-color: #22c55e; /* green-500 */
+            box-shadow: 0 10px 15px -3px rgba(34, 197, 94, 0.2), 0 4px 6px -4px rgba(34, 197, 94, 0.2); /* Green shadow */
+        }
+        #quick-link-loss:hover {
+            background-color: #ef4444; /* red-500 */
+            box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.2), 0 4px 6px -4px rgba(239, 68, 68, 0.2); /* Red shadow */
+        }
+        #quick-link-inventory:hover {
+            background-color: #3b82f6; /* blue-500 */
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2), 0 4px 6px -4px rgba(59, 130, 246, 0.2); /* Blue shadow */
+        }
+        #quick-link-monitor:hover {
+            background-color: #20B2AA; /* LightSeaGreen - Custom color */
+            box-shadow: 0 10px 15px -3px rgba(32, 178, 170, 0.2), 0 4px 6px -4px rgba(32, 178, 170, 0.2); /* Corresponding shadow */
+        }
+
+         .quick-link-card i {
+             font-size: 2rem; /* Icon size */
+             margin-bottom: 0.5rem; /* Space below icon */
+             color: inherit; /* Inherit color from parent link (changes on hover) */
+             transition: color 0.3s ease, transform 0.3s ease; /* Smooth color and transform transition */
+         }
+         .quick-link-card:hover i {
+             transform: scale(1.1); /* Scale icon on hover */
+         }
+         .quick-link-card span {
+             font-size: 1.1rem; /* Text size */
+             font-weight: 600; /* Semi-bold */
+             color: inherit; /* Inherit color from parent link */
+         }
+
+
+        /* --- Message Box Styles (for login success/error) --- */
+        .message-box {
+            position: fixed; /* Fixed position relative to viewport */
+            top: 90px; /* Position below the header */
+            left: 50%; /* Center horizontally */
+            transform: translateX(-50%); /* Adjust horizontal centering */
+            background-color: #fecaca; /* red-200 - Default error background */
+            color: #b91c1c; /* red-700 - Default error text color */
+            padding: 1rem 1.5rem; /* Padding */
+            border: 1px solid #fca5a5; /* red-300 - Default error border */
+            border-radius: 0.5rem; /* rounded-lg */
+            z-index: 1001; /* Ensure it's above header */
+            opacity: 0; /* Start hidden */
+            transition: opacity 0.5s ease, transform 0.5s ease; /* Smooth fade/slide transition */
+            transform: translateX(-50%) translateY(-20px); /* Start slightly above */
+            font-size: 1rem; /* Text size */
+            min-width: 320px; /* Minimum width */
+            text-align: center; /* Center text */
+            pointer-events: none; /* Don't block clicks when hidden */
+            font-weight: 500; /* Medium weight */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* Add shadow */
+        }
+        .message-box.success {
+            background-color: #d1fae5; /* green-100 */
+            color: #065f46; /* green-800 */
+            border-color: #a7f3d0; /* green-200 */
+        }
+        .message-box.show {
+            opacity: 1; /* Fade in */
+            transform: translateX(-50%) translateY(0); /* Slide down to final position */
+            pointer-events: auto; /* Allow interaction if needed (though usually not) */
+        }
+
+        /* Utility class to hide elements */
+        .hidden {
+            display: none !important; /* Force hide */
+        }
+
+        /* NEW CSS for navbar link visibility control */
+        .header.admin-view-active .navbar .admin-link {
+            display: none !important; /* Hide admin-specific nav links when on dashboard */
+        }
+        .header.admin-view-active .navbar .public-nav-link {
+            display: inline !important; /* Ensure public nav links are visible */
+        }
+        /* Custom styling for the Low Stock Alert card when there's an alert */
+        .dashboard-card.low-stock-active i.fa-triangle-exclamation {
+            color: #ef4444; /* red-500, for a more prominent alert */
+            animation: subtleBounce 1.5s infinite ease-in-out; /* Add a subtle bounce */
+        }
+        .dashboard-card.low-stock-active p.value {
+            color: #dc2626; /* red-600, for the text value */
+        }
+
+
+    </style>
+
+</head>
+<body class="bg-slate-100">
+    <div id="message-box" class="message-box"></div>
+
+    <header class="header">
+        <a href="#" class="logo"> <i class="fas fa-drumstick-bite"></i> Mangsho</a>
+
+        <nav class="navbar">
+            <a href="#home" class="main-content-link public-nav-link">Home</a>
+            <a href="#features" class="main-content-link public-nav-link">Features</a>
+            <a href="product.html" class="public-nav-link">Product</a> <a href="#Us" class="main-content-link public-nav-link">About Us</a>
+
+            <a href="#admin-dashboard" class="admin-link admin-dashboard-link">Dashboard</a>
+            <a href="sales.html" class="admin-link">Sales</a>
+            <a href="loss_records.html" class="admin-link">Loss-Records</a>
+            <a href="inventory.html" class="admin-link">Inventory</a>
+            <a href="realmonitor.html" class="admin-link">Real-time Monitor</a>
+        </nav>
+
+        <div class="icons">
+            <div class="fas fa-user" id="login-btn"></div>
+        </div>
+
+        <form action="#" class="login-form" id="login-form">
+            <h3>Login Now</h3>
+            <input type="email" placeholder="your email" class="box" id="login-email" required>
+            <input type="password" placeholder="your password" class="box" id="login-password" required>
+            <p id="login-error" class="text-red-500 text-sm mt-2 hidden">Invalid credentials.</p>
+            <p>Forgot password? <a href="#">Click Here</a></p>
+            <p>Don't have an account? <a href="#">Create Now</a></p>
+            <input type="submit" value="Login Now" class="btn">
+        </form>
+
+    </header>
+
+    <main>
+        <div id="main-content">
+            <section class="home" id="home">
+                <div class="content">
+                    <h3> Fresh <span>Meat</span> Products For You </h3>
+                    <p>
+                        Inventory Management and Post-Harvest Loss Management System for Perishable Meat-Based Products.
+                    </p>
+                     <a href="product.html" class="btn">Explore Products</a>
+                </div>
+            </section>
+
+            <section class="features" id="features">
+                <h1 class="heading"> Our <span>Features</span> </h1>
+                <div class="box-container">
+                    <div class="box">
+                         <img src="image/cold-storage.png" alt="Cold Storage Icon"
+                              onerror="this.onerror=null; this.src='https://placehold.co/150x150/f8fafc/94a3b8?text=Cold+Storage'; this.alt='Cold Storage Placeholder'">
+                         <h3>Cold Storage</h3>
+                         <p>Secure, temperature-controlled storage to maintain freshness and extend shelf life.</p>
+                         <a href="#" class="btn">Read More</a>
+                    </div>
+                    <div class="box">
+                         <img src="image/wholesale.png" alt="Wholesale Icon"
+                              onerror="this.onerror=null; this.src='https://placehold.co/150x150/f8fafc/94a3b8?text=Wholesale'; this.alt='Wholesale Placeholder'">
+                         <h3>Wholesale Supply</h3>
+                         <p>Reliable bulk supply options for businesses with consistent quality assurance.</p>
+                         <a href="#" class="btn">Read More</a>
+                    </div>
+                    <div class="box">
+                         <img src="image/fresh.png" alt="Fresh Delivery Icon"
+                              onerror="this.onerror=null; this.src='https://placehold.co/150x150/f8fafc/94a3b8?text=Delivery'; this.alt='Fresh Delivery Placeholder'">
+                         <h3>Fresh Delivery</h3>
+                         <p>Fast and hygienic delivery service ensuring products reach you in peak condition.</p>
+                         <a href="#" class="btn">Read More</a>
+                    </div>
+                </div>
+            </section>
+
+            <section id="Us" class="py-16 px-[7%] bg-slate-50">
+                 <h1 class="heading"> About <span>Us</span> </h1>
+                 <p class="text-center text-slate-700 mt-4 max-w-3xl mx-auto text-lg leading-relaxed">
+                     Mangsho is dedicated to providing the highest quality fresh meat products through innovative inventory management and post-harvest loss prevention techniques. Our commitment ensures freshness from farm to table.
+                 </p>
+             </section>
+        </div>
+
+        <section id="admin-dashboard" class="hidden">
+            <h1 class="heading"> Admin <span>Dashboard</span> </h1>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div class="dashboard-card">
+                    <a href="sales.html" class="dashboard-card-link">
+                        <i class="fas fa-dollar-sign"></i>
+                        <div class="card-content">
+                            <h4>Total Sales (All Time)</h4>
+                            <p class="value" id="dashboard-sales-value">Loading...</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="dashboard-card">
+                    <a href="inventory.html" class="dashboard-card-link">
+                        <i class="fas fa-boxes-stacked"></i>
+                        <div class="card-content">
+                            <h4>Inventory Items</h4>
+                            <p class="value" id="dashboard-inventory-value">Loading...</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="dashboard-card" id="low-stock-alert-card">
+                    <a href="inventory.html" class="dashboard-card-link">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        <div class="card-content">
+                            <h4>Low Stock Alert</h4>
+                             <p class="value" id="dashboard-low-stock-value">Loading...</p>
+                        </div>
+                    </a>
+                </div>
+                <div class="dashboard-card">
+                    <a href="loss_records.html" class="dashboard-card-link">
+                        <i class="fas fa-trash-alt"></i>
+                        <div class="card-content">
+                            <h4>Recent Losses (% of Total)</h4>
+                            <p class="value" id="dashboard-loss-percentage">Loading...</p>
+                            <p class="sub-value" id="dashboard-loss-kg"></p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <h2 class="text-2xl font-semibold text-slate-700 mb-6">Quick Actions</h2>
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <a href="sales.html" class="quick-link-card" id="quick-link-sales">
+                    <i class="fas fa-chart-line"></i>
+                    <span>View Sales</span>
+                </a>
+                <a href="loss_records.html" class="quick-link-card" id="quick-link-loss">
+                    <i class="fas fa-file-circle-minus"></i>
+                    <span>Record Loss</span>
+                </a>
+                <a href="inventory.html" class="quick-link-card" id="quick-link-inventory">
+                    <i class="fas fa-warehouse"></i>
+                    <span>Manage Inventory</span>
+                </a>
+                <a href="realmonitor.html" class="quick-link-card" id="quick-link-monitor">
+                    <i class="fas fa-tv"></i>
+                    <span>Real-time Monitor</span>
+                </a>
+            </div>
+            </section>
+    </main>
+
+    <script>
+        // --- Configuration ---
+        const ADMIN_EMAIL = "admin@gmail.com"; // Demo admin email
+        const ADMIN_PASSWORD = "12345678"; // Demo admin password
+        const LOGGED_IN_KEY = 'mangshoAdminLoggedIn'; // Key for session storage
+        const DASHBOARD_DATA_URL = 'php/dashboard_data.php'; // URL for the PHP data endpoint
+
+        // --- DOM Elements ---
+        const loginForm = document.getElementById('login-form');
+        const loginBtn = document.getElementById('login-btn');
+        const loginEmailInput = document.getElementById('login-email');
+        const loginPasswordInput = document.getElementById('login-password');
+        const loginError = document.getElementById('login-error');
+        const header = document.querySelector('.header');
+        const messageBox = document.getElementById('message-box');
+        const mainContent = document.getElementById('main-content');
+        const adminDashboard = document.getElementById('admin-dashboard');
+
+        // Dashboard Value Elements
+        const salesValueEl = document.getElementById('dashboard-sales-value');
+        const inventoryValueEl = document.getElementById('dashboard-inventory-value');
+        const lowStockValueEl = document.getElementById('dashboard-low-stock-value');
+        const lowStockAlertCardEl = document.getElementById('low-stock-alert-card'); // Get the card element
+        const lossPercentageEl = document.getElementById('dashboard-loss-percentage');
+        const lossKgEl = document.getElementById('dashboard-loss-kg');
+
+
+        // --- Functions ---
+
+        /**
+         * Displays a temporary message box at the top of the screen.
+         * @param {string} message - The message to display.
+         * @param {string} [type='error'] - The type of message ('success' or 'error').
+         */
+        function showMessage(message, type = 'error') {
+            messageBox.textContent = message;
+            messageBox.className = `message-box ${type}`; // Ensures only 'success' or 'error' class is applied
+            requestAnimationFrame(() => { // Ensures style changes are applied before class for transition
+                messageBox.classList.add('show');
+            });
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+            }, 3000);
+        }
+
+
+        /**
+         * Updates the view to show either the main content or the admin dashboard,
+         * and manages a class on the header for navbar link visibility.
+         * @param {boolean} isViewingAdminDashboard - True if the admin dashboard should be shown.
+         */
+        function updateContentView(isViewingAdminDashboard) {
+            if (isViewingAdminDashboard) {
+                mainContent.classList.add('hidden');
+                adminDashboard.classList.remove('hidden');
+                header.classList.add('admin-view-active');
+            } else {
+                mainContent.classList.remove('hidden');
+                adminDashboard.classList.add('hidden');
+                header.classList.remove('admin-view-active');
+            }
+        }
+
+        /**
+         * Fetches data from the PHP backend and updates the dashboard cards.
+         */
+        async function updateDashboardValues() {
+            if (salesValueEl) salesValueEl.textContent = 'Loading...';
+            if (inventoryValueEl) inventoryValueEl.textContent = 'Loading...';
+            if (lowStockValueEl) lowStockValueEl.textContent = 'Loading...';
+            if (lossPercentageEl) lossPercentageEl.textContent = 'Loading...';
+            if (lossKgEl) lossKgEl.textContent = '';
+
+            try {
+                const response = await fetch(DASHBOARD_DATA_URL);
+
+                if (!response.ok) {
+                     let errorText = `HTTP error! Status: ${response.status}`;
+                     try {
+                         const body = await response.text();
+                         const potentialJsonError = JSON.parse(body);
+                         if (potentialJsonError && potentialJsonError.error) {
+                             errorText = `Server Error: ${potentialJsonError.error}`;
+                             if(potentialJsonError.details) {
+                                 errorText += ` (Details: ${potentialJsonError.details})`;
+                             }
+                         } else if (body) {
+                             errorText += ` - ${body.substring(0, 100)}`;
+                         }
+                     } catch (e) { /* Ignore if body is not JSON or empty */ }
+                     throw new Error(errorText);
+                }
+
+                const data = await response.json();
+
+                 if (data.error) {
+                     throw new Error(`Server Error: ${data.error}${data.details ? ' ('+data.details+')' : ''}`);
+                 }
+
+                // Update Total Sales (All Time) - uses the same 'totalSales' key from PHP
+                if (salesValueEl && data.totalSales !== undefined) {
+                    salesValueEl.textContent = `BDT ${parseFloat(data.totalSales).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                } else if (salesValueEl) { salesValueEl.textContent = 'N/A'; }
+
+                // Update Inventory Items
+                if (inventoryValueEl && data.inventoryKg !== undefined) {
+                    inventoryValueEl.textContent = `${parseFloat(data.inventoryKg).toLocaleString('en-IN')} kg`;
+                } else if (inventoryValueEl) { inventoryValueEl.textContent = 'N/A'; }
+
+                // MODIFIED: Update Low Stock Alert display
+                if (lowStockValueEl && lowStockAlertCardEl) {
+                    if (data.lowStockAlertCount > 0 && data.leastStockItemName && data.leastStockItemName !== 'N/A' && data.leastStockItemName !== 'Error fetching' && data.leastStockItemName !== 'DB Error') {
+                        // An item is low in stock
+                        lowStockValueEl.innerHTML = `${data.leastStockItemName} <span class="text-sm text-slate-500">(${parseFloat(data.leastStockItemQuantity).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} kg)</span>`;
+                        lowStockAlertCardEl.classList.add('low-stock-active'); // Add class for special styling
+                    } else if (data.lowStockAlertCount > 0) {
+                        // There are low stock items, but couldn't fetch the specific least one or it's an error
+                        lowStockValueEl.innerHTML = `${data.lowStockAlertCount} item(s) low <span class="text-sm text-slate-500">(Details N/A)</span>`;
+                        lowStockAlertCardEl.classList.add('low-stock-active');
+                    }
+                    else {
+                        // No low stock items
+                        lowStockValueEl.textContent = 'All stock levels OK';
+                        lowStockAlertCardEl.classList.remove('low-stock-active'); // Remove special styling
+                         // Reset icon color if it was changed
+                        const lowStockIcon = lowStockAlertCardEl.querySelector('i.fa-triangle-exclamation');
+                        if (lowStockIcon) {
+                            lowStockIcon.style.color = '#f97316'; // Reset to default orange
+                        }
+                    }
+                } else if (lowStockValueEl) {
+                    lowStockValueEl.textContent = 'N/A';
+                    if(lowStockAlertCardEl) lowStockAlertCardEl.classList.remove('low-stock-active');
+                }
+                // END OF MODIFICATION for Low Stock Alert
+
+                // Update Recent Losses
+                if (lossPercentageEl && data.lossPercentage !== undefined) {
+                    lossPercentageEl.textContent = `${parseFloat(data.lossPercentage).toFixed(1)}%`;
+                } else if (lossPercentageEl) { lossPercentageEl.textContent = 'N/A'; }
+
+                if (lossKgEl && data.lossKg !== undefined && data.lossKg > 0) {
+                    lossKgEl.textContent = `(${parseFloat(data.lossKg).toLocaleString('en-IN')} kg)`;
+                } else if (lossKgEl) { lossKgEl.textContent = ''; }
+
+            } catch (error) {
+                console.error('Error fetching or processing dashboard data:', error);
+                showMessage(`Failed to load dashboard data. ${error.message}`, 'error');
+                if (salesValueEl) salesValueEl.textContent = 'Error';
+                if (inventoryValueEl) inventoryValueEl.textContent = 'Error';
+                if (lowStockValueEl) lowStockValueEl.textContent = 'Error';
+                if (lossPercentageEl) lossPercentageEl.textContent = 'Error';
+                if (lossKgEl) lossKgEl.textContent = '';
+                if (lowStockAlertCardEl) lowStockAlertCardEl.classList.remove('low-stock-active');
+            }
+        }
+
+
+        /** Sets the application state to Logged In. */
+        function setLoggedInState() {
+            sessionStorage.setItem(LOGGED_IN_KEY, 'true');
+            header.classList.add('logged-in');
+            loginForm.classList.remove('active');
+            loginError.classList.add('hidden');
+            updateContentView(true);
+            updateDashboardValues();
+        }
+
+        /** Sets the application state to Logged Out. */
+        function setLoggedOutState() {
+            sessionStorage.removeItem(LOGGED_IN_KEY);
+            header.classList.remove('logged-in');
+            loginEmailInput.value = '';
+            loginPasswordInput.value = '';
+            loginForm.classList.remove('active');
+            updateContentView(false);
+        }
+
+        /**
+         * Handles the login form submission event.
+         * @param {Event} event - The form submission event.
+         */
+        function handleLogin(event) {
+            event.preventDefault();
+            const email = loginEmailInput.value.trim();
+            const password = loginPasswordInput.value;
+
+            if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+                setLoggedInState();
+                showMessage('Admin login successful!', 'success');
+            } else {
+                loginError.classList.remove('hidden');
+                loginPasswordInput.value = '';
+                showMessage('Invalid email or password.', 'error');
+            }
+        }
+
+        /** Handles clicks on the login/logout icon in the header. */
+        function handleIconClick() {
+            if (sessionStorage.getItem(LOGGED_IN_KEY) === 'true') {
+                setLoggedOutState();
+                showMessage('You have been logged out.', 'success');
+            } else {
+                loginForm.classList.toggle('active');
+                if (loginForm.classList.contains('active')) {
+                    loginError.classList.add('hidden'); // Hide error when opening form
+                }
+            }
+        }
+
+        // --- Event Listeners ---
+        loginForm.addEventListener('submit', handleLogin);
+        loginBtn.addEventListener('click', handleIconClick);
+
+        // Close login form if clicked outside (and not logged in)
+        document.addEventListener('click', function(event) {
+            if (!loginForm.contains(event.target) && !loginBtn.contains(event.target) && loginForm.classList.contains('active')) {
+                 if (sessionStorage.getItem(LOGGED_IN_KEY) !== 'true') {
+                     loginForm.classList.remove('active');
+                 }
+            }
+        });
+
+
+        // --- Initial State Check on Page Load ---
+        if (sessionStorage.getItem(LOGGED_IN_KEY) === 'true') {
+            setLoggedInState();
+        } else {
+            setLoggedOutState();
+        }
+
+        // --- Navigation Link Handling ---
+        document.querySelectorAll('.navbar a').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const isAdminLink = this.classList.contains('admin-link');
+                const isMainContentLink = this.classList.contains('main-content-link');
+                const isLoggedIn = sessionStorage.getItem(LOGGED_IN_KEY) === 'true';
+                const href = this.getAttribute('href');
+
+                if (isAdminLink && !isLoggedIn && href && !href.startsWith('#')) {
+                    e.preventDefault();
+                    showMessage('Please log in as admin to access this page.', 'error');
+                    loginForm.classList.add('active');
+                    return;
+                }
+
+                if (href && href.startsWith('#')) {
+                    e.preventDefault();
+                    const targetId = href.substring(1);
+                    const targetElement = document.getElementById(targetId);
+
+                    if (targetElement) {
+                        if (isLoggedIn) {
+                            if (targetId === 'admin-dashboard') {
+                                updateContentView(true);
+                                updateDashboardValues(); // Refresh dashboard data when navigating to it
+                            } else if (isMainContentLink) {
+                                updateContentView(false);
+                            }
+                        } else {
+                            if (targetId === 'admin-dashboard') {
+                                showMessage('Please log in to view the dashboard.', 'error');
+                                loginForm.classList.add('active');
+                                return;
+                            }
+                            updateContentView(false);
+                        }
+                        setTimeout(() => {
+                            targetElement.scrollIntoView({ behavior: 'smooth' });
+                        }, 50);
+                    }
+                }
+            });
+        });
+
+
+        // --- Image Error Handling for Feature Boxes ---
+        document.querySelectorAll('.features .box img').forEach(img => {
+            img.onerror = function() {
+                let placeholderText = this.alt.replace(' Icon', '').replace(' Placeholder', '') || 'Image';
+                const size = 150;
+                this.src = `https://placehold.co/${size}x${size}/f8fafc/94a3b8?text=${encodeURIComponent(placeholderText)}`;
+                this.alt = `${placeholderText} Placeholder`;
+            };
+        });
+
+    </script>
+
+</body>
+</html>

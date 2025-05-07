@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales & Distribution Records</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc; /* Slightly off-white like inventory.html */
+             /* Subtle noise background from product.html, if desired, or gradient like inventory.html */
+            background-image: linear-gradient(to top, #ffedd5, #fed7aa); /* Light orange gradient (orange-100 to orange-200) like inventory.html */
+        }
+
+        /* Enhanced focus states for better accessibility and flair */
+        input:focus, button:focus, canvas:focus, select:focus, textarea:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.5); /* Tailwind orange-400 focus ring */
+        }
+        input:focus, select:focus, textarea:focus {
+             border-color: #fb923c; /* orange-400 */
+        }
+
+        /* General button styling */
+        .button {
+            padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;
+            font-size: 16px; font-weight: 500;
+            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.15s ease-in-out;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+        }
+         .button:hover {
+             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+             transform: translateY(-1px); filter: brightness(1.05);
+         }
+        .button:active { transform: translateY(0px); filter: brightness(0.95); }
+
+        /* Specific button colors - themed for orange */
+        .button-primary { background-color: #f97316; color: white; } /* orange-500 */
+        .button-primary:hover { background-color: #ea580c; } /* orange-600 */
+
+        .button-secondary { background-color: #fed7aa; color: #c2410c; } /* orange-200 text-orange-700 */
+        .button-secondary:hover { background-color: #fdba74; } /* orange-300 */
+
+        .button-danger { background-color: #fee2e2; color: #b91c1c; font-size: 14px; padding: 5px 10px; border: 1px solid #fecaca;} /* red-100 text-red-700 border-red-200 */
+        .button-danger:hover { background-color: #fecaca; color: #991b1b; } /* red-200 text-red-800 */
+
+        .button-success { background-color: #dcfce7; color: #15803d;} /* green-100, green-700 */
+        .button-success:hover { background-color: #bbf7d0; } /* green-200 */
+
+
+        /* File Upload Button */
+        .file-upload-label {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.75rem 1.25rem; /* Adjusted padding */
+            background-color: #ffedd5; /* orange-100 */
+            color: #c2410c; /* orange-700 */
+            border: 1px solid #fed7aa; /* orange-200 */
+            border-radius: 0.5rem; /* rounded-lg */
+            cursor: pointer; font-weight: 500;
+            transition: all 0.2s ease-in-out;
+        }
+        .file-upload-label:hover { background-color: #fed7aa; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.07); }
+        .file-upload-label input[type="file"] { display: none; }
+
+
+        /* Table Styles */
+        #data-table {
+            margin-top: 1.5rem; width: 100%; border-collapse: collapse;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05); /* Enhanced shadow */
+            border-radius: 0.75rem; overflow: hidden; border: 1px solid #fddaa6; /* orange-200 border */
+        }
+        #data-table thead th {
+            background-color: #fff7ed; /* orange-50 */
+            color: #9a3412; /* orange-800 */
+            padding: 0.85rem 1.1rem; text-align: left; font-weight: 600;
+            border-bottom: 2px solid #fed7aa; /* orange-200 */
+            white-space: nowrap; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        #data-table tbody td {
+            padding: 0.9rem 1.1rem; border-bottom: 1px solid #ffeee0; /* Lighter orange for row separator */
+            font-size: 0.9rem; color: #7c2d12; /* orange-900 */
+        }
+        #data-table tbody tr { transition: background-color 0.15s ease-in-out; }
+        #data-table tbody tr:nth-child(odd) { background-color: #ffffff; }
+        #data-table tbody tr:nth-child(even) { background-color: #fffaf0; } /* Very light orange/cream */
+        #data-table tbody tr:hover { background-color: #ffedd5; } /* orange-100 */
+
+        /* Message Styling (Success/Error) */
+        .message-banner {
+            border-left-width: 4px; padding: 1rem 1.5rem; margin-bottom: 1.5rem;
+            border-radius: 0.375rem; font-size: 0.95rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: none;
+        }
+        .message-banner strong { font-bold: 600; }
+        .message-banner span { display: block; sm:inline; margin-left: 0.5rem; }
+        .message-success { background-color: #dcfce7; border-color: #22c55e; color: #15803d; }
+        .message-error { background-color: #fee2e2; border-color: #ef4444; color: #b91c1c; }
+
+
+        /* Summary Boxes & Data Containers */
+        .data-container, .summary-box {
+            background-color: #fff; border-radius: 0.75rem; padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            border: 1px solid #fde68a; /* Lighter orange border for containers */
+        }
+        .summary-box { padding: 1.25rem; } /* Slightly more padding for summary boxes */
+        .data-container:hover, .summary-box:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+        .summary-box h3 {
+            font-size: 0.9rem; font-weight: 600; color: #7c2d12; /* orange-900 */
+            margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .summary-box p, .summary-box ul { font-size: 1.3rem; color: #c2410c; font-weight: 600; } /* orange-700 */
+        .summary-box ul { font-size: 1rem; list-style-position: inside; padding-left: 0; }
+        .summary-box li { font-size: 1rem; font-weight: 500; color: #dd6b20; } /* orange-600 */
+
+        /* Status Gradient Text Styles */
+        .status-gradient { @apply bg-clip-text text-transparent font-semibold; }
+        .status-gradient-high { @apply status-gradient bg-gradient-to-r from-green-500 to-emerald-600; }
+        .status-gradient-balanced { @apply status-gradient bg-gradient-to-r from-blue-500 to-indigo-600; }
+        .status-gradient-low { @apply status-gradient bg-gradient-to-r from-amber-500 to-orange-600; }
+        .status-gradient-very-low { @apply status-gradient bg-gradient-to-r from-red-500 to-rose-600; }
+        .status-gradient-error { @apply status-gradient bg-gradient-to-r from-red-600 to-red-700 font-bold; }
+
+        /* Chart, Sales Summary, Ranking & Table Containers */
+        #chart-container, #sales-summary-container, #demand-ranking-container, #table-controls, #table-container {
+            display: none; margin-top: 2.5rem;
+        }
+        #sales-summary-list {
+            list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;
+        }
+        #sales-summary-list li {
+            background-color: #fff7ed; padding: 0.75rem 1rem; border-radius: 0.5rem;
+            border: 1px solid #fed7aa; text-align: center; min-width: 130px; /* Increased min-width */
+            transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        #sales-summary-list li:hover { background-color: #ffedd5; transform: scale(1.03); }
+        #sales-summary-list li span { display: block; }
+        #sales-summary-list li .product-name { font-weight: 600; color: #9a3412; margin-bottom: 0.25rem; font-size: 0.875rem; }
+        #sales-summary-list li .sales-value { font-size: 1.1rem; color: #c2410c; font-weight: 600; }
+
+        #demand-ranking-list { list-style: decimal; padding-left: 2rem; margin: 0 auto; max-width: 450px; /* Increased max-width */ }
+        #demand-ranking-list li {
+            background-color: #fff7ed; padding: 0.6rem 1.2rem; border-radius: 0.5rem;
+            border: 1px solid #fed7aa; margin-bottom: 0.6rem; display: flex;
+            justify-content: space-between; align-items: center; transition: background-color 0.2s ease, transform 0.2s ease;
+        }
+        #demand-ranking-list li:hover { background-color: #ffedd5; transform: translateX(5px); }
+        #demand-ranking-list li .product-name { font-weight: 600; color: #9a3412; }
+        #demand-ranking-list li .demand-value { font-size: 1rem; color: #c2410c; font-weight: 600; }
+        #demand-ranking-list li .rank-status { font-size: 0.8rem; font-style: italic; color: #dd6b20; margin-left: 0.5rem;}
+
+        #chart-container canvas { max-height: 400px; width: 100% !important; height: auto !important; }
+        #table-container { overflow-x: auto; }
+
+        /* Modal Styles */
+        .modal {
+            display: none; position: fixed; z-index: 1050; /* Higher z-index */
+            left: 0; top: 0; width: 100%; height: 100%; overflow: auto;
+            background-color: rgba(0,0,0,0.6); /* Darker backdrop */
+            padding-top: 50px; backdrop-filter: blur(5px); /* Stronger blur */
+            opacity: 0; transition: opacity 0.3s ease-in-out;
+        }
+        .modal.active { display: block; opacity: 1; }
+        .modal-content {
+            background-color: #ffffff; margin: 5% auto; padding: 2rem; /* Increased padding */
+            border: none; width: 90%; max-width: 650px; /* Wider modal */
+            border-radius: 0.75rem; position: relative;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1); /* Enhanced shadow */
+            transform: translateY(-20px) scale(0.98); opacity: 0; /* Start slightly up and smaller */
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        .modal.active .modal-content { transform: translateY(0) scale(1); opacity: 1; }
+        .modal-close {
+            color: #9ca3af; position: absolute; top: 1rem; right: 1.25rem;
+            font-size: 32px; font-weight: bold; cursor: pointer; line-height: 1;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .modal-close:hover, .modal-close:focus { color: #ef4444; transform: rotate(90deg); } /* Red close on hover, rotate */
+
+        .form-input, select.form-input {
+            width: 100%; padding: 12px 15px; /* Increased padding */
+            margin-bottom: 1rem; border: 1px solid #ddd; /* Lighter border */
+            border-radius: 0.5rem; box-sizing: border-box; font-size: 1rem; /* Slightly larger font */
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            background-color: #f9fafb; /* Light input background */
+        }
+        .form-input:focus, select.form-input:focus {
+            border-color: #f97316; /* orange-500 */
+            box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.3); /* orange-400 with opacity */
+            outline: none; background-color: white;
+        }
+        .form-label {
+            display: block; margin-bottom: 0.5rem; font-weight: 500;
+            font-size: 0.9rem; color: #4b5563; /* gray-600 */
+        }
+
+        /* Search input specific styling */
+        #search-input {
+            padding-left: 2.5rem; /* Space for icon */
+        }
+        .search-icon-wrapper {
+            position: absolute; left: 0.75rem; top: 50%;
+            transform: translateY(-50%); pointer-events: none;
+            color: #9ca3af; /* gray-400 */
+        }
+        /* Spinner for buttons */
+        .spinner {
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            width: 1em; height: 1em;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white; /* Or another contrasting color */
+            margin-right: 0.5em;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body class="p-6 md:p-10">
+    <div class="container mx-auto bg-white p-6 md:p-10 rounded-xl shadow-2xl border border-gray-200">
+        <h1 class="text-4xl font-semibold text-gray-800 mb-10 text-center">
+             Sales & Distribution Dashboard
+        </h1>
+
+        <div id="success-message-banner" class="message-banner message-success">
+            <strong class="font-bold">Success!</strong>
+            <span id="success-text"></span>
+        </div>
+        <div id="error-message-banner" class="message-banner message-error">
+            <strong class="font-bold">Error!</strong>
+            <span id="error-text"></span>
+        </div>
+
+
+        <div class="flex flex-col items-center mb-10 border-b pb-10 border-gray-200">
+             <label for="file-upload" class="file-upload-label button">
+                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.125a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                 <span>Upload Sales Data (.xlsx, .xls)</span>
+                 <input type="file" id="file-upload" accept=".xlsx, .xls" />
+             </label>
+             <p id="file-name" class="mt-4 text-sm text-gray-600 italic"></p>
+        </div>
+
+        <div id="summary-container" class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div class="summary-box"><h3 >Total Amount</h3><p id="total-sales">0.00 TK</p></div>
+            <div class="summary-box"><h3 >Total Quantity Sold</h3><p id="total-distribution">0</p></div>
+            <div class="summary-box"><h3 >Lowest Overall Demand</h3><ul id="overstock-list"><li>No data yet</li></ul></div>
+        </div>
+
+        <div id="chart-container" class="data-container">
+             <h2 class="text-2xl font-semibold text-gray-700 mb-6 text-center">Quantity Overview by Product</h2>
+            <canvas id="quantityChart"></canvas>
+        </div>
+
+        <div id="sales-summary-container" class="data-container">
+             <h2 class="text-2xl font-semibold text-gray-700 mb-6 text-center">Total Amount by Product</h2>
+             <ul id="sales-summary-list">
+                 <li class="text-gray-500 italic">No sales data yet</li>
+             </ul>
+        </div>
+
+        <div id="demand-ranking-container" class="data-container">
+             <h2 class="text-2xl font-semibold text-gray-700 mb-6 text-center">Overall Demand Ranking</h2>
+             <ol id="demand-ranking-list">
+                 <li class="text-gray-500 italic">No ranking data yet</li>
+             </ol>
+        </div>
+
+        <div id="table-controls" class="mt-10 pt-10 border-t border-gray-200">
+            <div class="mb-6 border border-gray-200 rounded-lg p-5 shadow-sm bg-orange-50">
+                 <label for="search-input" class="block text-sm font-medium text-orange-700 mb-2">Search Records</label>
+                 <div class="flex items-center gap-3 relative">
+                     <div class="search-icon-wrapper">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                     </div>
+                     <input type="text" id="search-input" placeholder="Search by Product ID or Name..."
+                            class="form-input flex-grow !mb-0">
+                     <button id="clear-search-button" class="button button-secondary flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                           <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        Clear
+                    </button>
+                 </div>
+            </div>
+            <div class="text-right">
+                 <button id="add-record-button" class="button button-primary">
+                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                     Add New Record
+                 </button>
+             </div>
+        </div>
+
+        <div id="table-container" class="mt-6">
+             <h2 class="text-2xl font-semibold text-gray-700 mb-5">Detailed Sales & Distribution Records</h2>
+            <div class="overflow-x-auto shadow-md rounded-lg border border-gray-200">
+                <table id="data-table" class="min-w-full table-auto">
+                    <thead>
+                        <tr>
+                            <th>Product ID</th>
+                            <th>Product Name</th>
+                            <th>Qty Sold</th>
+                            <th>Total Qty</th>
+                            <th>Total Amount (TK)</th>
+                            <th>Sale Date</th>
+                            <th>Demand (%)</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="addRecordModal" class="modal">
+         <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h2 class="text-2xl font-semibold mb-6 text-gray-800">Add New Sales Record</h2>
+            <form id="add-record-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                    <div><label for="add-product-id" class="form-label">Product ID (Optional)</label><input type="text" id="add-product-id" class="form-input" placeholder="Leave blank to auto-generate"></div>
+                    <div><label for="add-product-name" class="form-label">Product Name*</label><select id="add-product-name" class="form-input bg-white" required><option value="" disabled selected>Select Product</option></select></div>
+                    <div><label for="add-quantity-sold" class="form-label">Quantity Sold*</label><input type="number" id="add-quantity-sold" class="form-input" required min="0" step="any" placeholder="e.g., 10"></div>
+                    <div><label for="add-total-quantity" class="form-label">Total Quantity (for this product type/batch)*</label><input type="number" id="add-total-quantity" class="form-input" required min="0" step="any" placeholder="e.g., 100"></div>
+                    <div><label for="add-total-amount" class="form-label">Total Amount (TK)*</label><input type="number" id="add-total-amount" class="form-input" required min="0" step="0.01" placeholder="e.g., 1500.50"></div>
+                    <div><label for="add-sale-date" class="form-label">Sale Date*</label><input type="date" id="add-sale-date" class="form-input bg-white" required></div>
+                </div>
+                 <div id="add-record-error" class="message-banner message-error mt-5"></div>
+                <div class="mt-8 flex justify-end gap-4">
+                    <button type="button" class="button button-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" id="submit-add-record" class="button button-primary">
+                        <span class="button-text">Add Record</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const fileUpload = document.getElementById('file-upload');
+        const fileNameDisplay = document.getElementById('file-name');
+        const dataTableBody = document.getElementById('data-table').querySelector('tbody');
+        const successMessageBanner = document.getElementById('success-message-banner');
+        const successTextEl = document.getElementById('success-text');
+        const errorMessageBanner = document.getElementById('error-message-banner');
+        const errorTextEl = document.getElementById('error-text');
+
+        const totalSalesElement = document.getElementById('total-sales');
+        const totalDistributionElement = document.getElementById('total-distribution');
+        const overstockList = document.getElementById('overstock-list');
+        const chartContainer = document.getElementById('chart-container');
+        const salesSummaryContainer = document.getElementById('sales-summary-container');
+        const salesSummaryList = document.getElementById('sales-summary-list');
+        const demandRankingContainer = document.getElementById('demand-ranking-container');
+        const demandRankingList = document.getElementById('demand-ranking-list');
+        const tableContainer = document.getElementById('table-container');
+        const tableControls = document.getElementById('table-controls');
+        const quantityChartCanvas = document.getElementById('quantityChart');
+        const searchInput = document.getElementById('search-input');
+        const clearSearchButton = document.getElementById('clear-search-button');
+        const addRecordButton = document.getElementById('add-record-button');
+        const addRecordModal = document.getElementById('addRecordModal');
+        const addRecordForm = document.getElementById('add-record-form');
+        const addProductNameSelect = document.getElementById('add-product-name');
+        const addRecordErrorEl = document.getElementById('add-record-error'); // Changed ID
+        const submitAddRecordBtn = document.getElementById('submit-add-record');
+
+
+        // Configuration and State
+        const API_ADD_SALE_URL = 'php/api_add_sale.php';
+        const ALLOWED_PRODUCT_NAMES = ["Chicken", "Beef", "Mutton"]; // Consistent with inventory
+        let quantityChartInstance = null;
+        let allRecords = [];
+        let nextTempId = 0; // For client-side unique IDs if needed for deletion before backend ID
+
+        // --- Helper Functions ---
+        function displayMessage(element, textElement, message, type = 'error') {
+            textElement.innerHTML = message; // Use innerHTML to render <br> if present
+            element.className = `message-banner message-${type}`; // Ensure base class is there
+            element.style.display = 'block';
+            scrollToMessage(element);
+            if (type === 'success') {
+                setTimeout(() => hideMessage(element), 5000);
+            }
+        }
+        function hideMessage(element) { element.style.display = 'none'; }
+        function scrollToMessage(element) {
+            const msgRect = element.getBoundingClientRect();
+            if (msgRect.top < 0 || msgRect.bottom > window.innerHeight) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+        function formatExcelDate(excelDate) {
+            if (excelDate instanceof Date && !isNaN(excelDate.getTime())) {
+                try {
+                    const year = excelDate.getFullYear();
+                    if (year < 1900 || year > 2100) return excelDate.toLocaleDateString();
+                    const month = String(excelDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(excelDate.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                } catch (e) { return excelDate.toLocaleDateString(); }
+            }
+            if (typeof excelDate === 'number' && !isNaN(excelDate) && excelDate >= 1 && excelDate <= 2958465) {
+                try {
+                    const excelEpoch = Date.UTC(1899, 11, 30);
+                    const jsMillis = excelEpoch + excelDate * 86400000;
+                    const jsDate = new Date(jsMillis);
+                    if (isNaN(jsDate.getTime())) return String(excelDate);
+                    const year = jsDate.getUTCFullYear();
+                    if (year < 1900 || year > 2100) return String(excelDate);
+                    const month = String(jsDate.getUTCMonth() + 1).padStart(2, '0');
+                    const day = String(jsDate.getUTCDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                } catch (e) { return String(excelDate); }
+            }
+            if (typeof excelDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(excelDate)) return excelDate;
+            if (typeof excelDate === 'string') {
+                try {
+                    const d = new Date(excelDate);
+                    if (!isNaN(d.getTime())) {
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        if (year > 1900 && year < 2100) return `${year}-${month}-${day}`;
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            return String(excelDate);
+        }
+
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            populateProductDropdown();
+            renderUI(allRecords); // Initial render (will show "Upload or add data...")
+        });
+
+        fileUpload.addEventListener('change', handleFileChange);
+        searchInput.addEventListener('input', handleSearch);
+        clearSearchButton.addEventListener('click', () => { searchInput.value = ''; handleSearch(); });
+        addRecordButton.addEventListener('click', openModal);
+        addRecordForm.addEventListener('submit', handleAddRecordSubmit);
+        dataTableBody.addEventListener('click', handleDeleteClick);
+
+
+        // --- Core Functions ---
+        function populateProductDropdown() {
+             addProductNameSelect.innerHTML = '<option value="" disabled selected>Select Product</option>';
+             ALLOWED_PRODUCT_NAMES.forEach(type => {
+                 const option = document.createElement('option');
+                 option.value = type; option.textContent = type;
+                 addProductNameSelect.appendChild(option);
+             });
+        }
+
+        function openModal() {
+            addRecordForm.reset();
+            addRecordErrorEl.style.display = 'none';
+            addRecordModal.classList.add('active');
+            document.getElementById('add-sale-date').valueAsDate = new Date(); // Default to today
+        }
+        function closeModal() { addRecordModal.classList.remove('active'); }
+
+        async function handleAddRecordSubmit(event) {
+            event.preventDefault();
+            hideMessage(successMessageBanner); hideMessage(errorMessageBanner);
+            addRecordErrorEl.style.display = 'none'; // Hide modal error specifically
+
+            const submitButtonText = submitAddRecordBtn.querySelector('.button-text');
+            const originalButtonText = submitButtonText.textContent;
+            submitAddRecordBtn.disabled = true;
+            submitButtonText.textContent = 'Adding...';
+            const spinner = document.createElement('span');
+            spinner.className = 'spinner';
+            submitAddRecordBtn.insertBefore(spinner, submitButtonText);
+
+
+            let productId = document.getElementById('add-product-id').value.trim();
+            const productName = addProductNameSelect.value;
+            const quantitySoldStr = document.getElementById('add-quantity-sold').value;
+            const totalQuantityStr = document.getElementById('add-total-quantity').value;
+            const totalAmountStr = document.getElementById('add-total-amount').value;
+            const saleDate = document.getElementById('add-sale-date').value;
+
+            let errors = [];
+            if (!productName) errors.push('Product Name selection is required.');
+            if (!quantitySoldStr) errors.push('Quantity Sold is required.');
+            if (!totalQuantityStr) errors.push('Total Quantity is required.');
+            if (!totalAmountStr) errors.push('Total Amount is required.');
+            if (!saleDate) errors.push('Sale Date is required.');
+
+            const quantitySold = parseFloat(quantitySoldStr);
+            const totalQuantity = parseFloat(totalQuantityStr);
+            const totalAmount = parseFloat(totalAmountStr);
+
+            if (isNaN(quantitySold) || quantitySold <= 0) errors.push('Quantity Sold must be a positive number.');
+            if (isNaN(totalQuantity) || totalQuantity < 0) errors.push('Total Quantity must be a non-negative number.');
+            if (isNaN(totalAmount) || totalAmount < 0) errors.push('Total Amount must be a non-negative number.');
+            if (!isNaN(quantitySold) && !isNaN(totalQuantity) && quantitySold > totalQuantity) {
+                errors.push('Quantity Sold cannot be greater than Total Quantity for this product/batch.');
+            }
+
+            if (errors.length > 0) {
+                addRecordErrorEl.innerHTML = errors.join('<br>');
+                addRecordErrorEl.style.display = 'block';
+                submitButtonText.textContent = originalButtonText;
+                if(spinner.parentNode) spinner.remove();
+                submitAddRecordBtn.disabled = false;
+                return;
+            }
+
+            const recordData = {
+                product_id: productId, // PHP will generate if empty
+                product_name: productName,
+                quantity_sold: quantitySold,
+                total_quantity: totalQuantity,
+                total_amount: totalAmount,
+                sale_date: saleDate
+            };
+
+            try {
+                const response = await fetch(API_ADD_SALE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(recordData)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const newRecord = {
+                        ...recordData,
+                        product_id: result.generated_product_id || productId, // Use generated ID if available
+                        tempId: result.sale_id || nextTempId++ // Use DB sale_id as tempId for consistency
+                    };
+                    allRecords.push(newRecord);
+                    closeModal();
+                    renderUI(filterRecords(searchInput.value.toLowerCase()));
+                    displayMessage(successMessageBanner, successTextEl, result.message || 'Record added successfully!', 'success');
+                } else {
+                    displayMessage(errorMessageBanner, errorTextEl, result.message || 'Failed to add record.', 'error');
+                }
+            } catch (error) {
+                console.error('Error adding record:', error);
+                displayMessage(errorMessageBanner, errorTextEl, 'An unexpected error occurred while adding the record.', 'error');
+            } finally {
+                submitButtonText.textContent = originalButtonText;
+                if(spinner.parentNode) spinner.remove();
+                submitAddRecordBtn.disabled = false;
+            }
+        }
+
+
+        function handleDeleteClick(event) {
+            if (event.target.classList.contains('delete-button') || event.target.closest('.delete-button')) {
+                const button = event.target.classList.contains('delete-button') ? event.target : event.target.closest('.delete-button');
+                const tempIdToDelete = parseInt(button.getAttribute('data-temp-id'), 10);
+                if (!isNaN(tempIdToDelete)) {
+                    if (confirm('Are you sure you want to delete this record? This action cannot be undone locally.')) {
+                        // Note: This only deletes from the client-side `allRecords` array.
+                        // For permanent deletion, an API call to the backend would be needed.
+                        allRecords = allRecords.filter(record => record.tempId !== tempIdToDelete);
+                        renderUI(filterRecords(searchInput.value.toLowerCase()));
+                        displayMessage(successMessageBanner, successTextEl, 'Record removed from the list.', 'success');
+                    }
+                }
+            }
+        }
+
+        function handleSearch() {
+            const searchTerm = searchInput.value.toLowerCase();
+            renderUI(filterRecords(searchTerm));
+        }
+
+        function filterRecords(searchTerm) {
+           if (!searchTerm) return allRecords;
+           return allRecords.filter(record =>
+               String(record['product_id']).toLowerCase().includes(searchTerm) ||
+               String(record['product_name']).toLowerCase().includes(searchTerm)
+           );
+        }
+
+        function handleFileChange(event) {
+            const file = event.target.files[0];
+            resetUIStateBeforeLoad();
+            if (file) {
+                fileNameDisplay.textContent = `Selected file: ${file.name}`;
+                processExcelFile(file);
+            } else {
+                fileNameDisplay.textContent = '';
+            }
+        }
+
+        function resetUIStateBeforeLoad() {
+            allRecords = []; nextTempId = 0;
+            dataTableBody.innerHTML = `<tr><td colspan="9" class="px-4 py-2 text-center text-gray-500">Processing file...</td></tr>`;
+            // Hide all data display sections initially
+            [chartContainer, salesSummaryContainer, demandRankingContainer, tableControls, tableContainer].forEach(el => el.style.display = 'none');
+            // Clear summary texts
+            salesSummaryList.innerHTML = '<li class="text-gray-500 italic">Processing...</li>';
+            demandRankingList.innerHTML = '<li class="text-gray-500 italic">Processing...</li>';
+            overstockList.innerHTML = '<li>Processing...</li>';
+            totalSalesElement.textContent = '0.00 TK';
+            totalDistributionElement.textContent = '0';
+            // Clear messages
+            hideMessage(successMessageBanner); hideMessage(errorMessageBanner);
+            searchInput.value = '';
+            if (quantityChartInstance) { quantityChartInstance.destroy(); quantityChartInstance = null; }
+            closeModal();
+        }
+
+        async function processExcelFile(file) {
+            const reader = new FileReader();
+            const originalFileName = file.name; // Store original file name for messages
+
+            reader.onload = async function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: null }); // Use null for empty cells
+
+                    if (!jsonData || jsonData.length === 0) {
+                        displayMessage(errorMessageBanner, errorTextEl, `Error: The Excel file '${originalFileName}' is empty or has no data rows.`, 'error');
+                        renderUI([]); // Render empty state
+                        return;
+                    }
+
+                    const requiredFields = ['product_name', 'quantity_sold', 'total_quantity', 'total_amount', 'sale_date'];
+                    const firstRow = jsonData[0];
+                    const missingFields = requiredFields.filter(field => !Object.keys(firstRow).map(k => k.toLowerCase().trim()).includes(field.toLowerCase().trim()));
+
+                    if (missingFields.length > 0) {
+                        displayMessage(errorMessageBanner, errorTextEl, `Error in '${originalFileName}': Missing columns: ${missingFields.join(', ')}. Ensure headers match expected fields.`, 'error');
+                        renderUI([]);
+                        return;
+                    }
+
+                    let validationErrors = [];
+                    let successfullyAddedCount = 0;
+                    const recordsFromExcel = [];
+
+                    for (let i = 0; i < jsonData.length; i++) {
+                        const item = jsonData[i];
+                        const rowNum = i + 2; // For user-friendly error messages
+                        let rowHasError = false;
+
+                        // Normalize header keys (case-insensitive and trim spaces)
+                        const normalizedItem = {};
+                        for (const key in item) {
+                            normalizedItem[key.toLowerCase().trim().replace(/\s+/g, '_')] = item[key];
+                        }
+
+                        let productId = String(normalizedItem['product_id'] || '').trim();
+                        const productName = String(normalizedItem['product_name'] || '').trim();
+                        const quantitySoldStr = normalizedItem['quantity_sold'];
+                        const totalQuantityStr = normalizedItem['total_quantity'];
+                        const totalAmountStr = normalizedItem['total_amount'];
+                        const saleDateRaw = normalizedItem['sale_date'];
+
+                        if (!productName) { validationErrors.push(`Row ${rowNum}: Product Name is missing.`); rowHasError = true; }
+                        else if (!ALLOWED_PRODUCT_NAMES.includes(productName)) { validationErrors.push(`Row ${rowNum}: Invalid Product Name "${productName}". Allowed: ${ALLOWED_PRODUCT_NAMES.join(', ')}.`); rowHasError = true; }
+
+                        const quantitySold = parseFloat(quantitySoldStr);
+                        if (quantitySoldStr === null || quantitySoldStr === '' || isNaN(quantitySold) || quantitySold <= 0) { validationErrors.push(`Row ${rowNum}: Quantity Sold must be a positive number.`); rowHasError = true; }
+
+                        const totalQuantity = parseFloat(totalQuantityStr);
+                        if (totalQuantityStr === null || totalQuantityStr === '' || isNaN(totalQuantity) || totalQuantity < 0) { validationErrors.push(`Row ${rowNum}: Total Quantity must be a non-negative number.`); rowHasError = true; }
+
+                        const totalAmount = parseFloat(totalAmountStr);
+                        if (totalAmountStr === null || totalAmountStr === '' || isNaN(totalAmount) || totalAmount < 0) { validationErrors.push(`Row ${rowNum}: Total Amount must be a non-negative number.`); rowHasError = true; }
+
+                        let formattedSaleDate = '';
+                        if (!saleDateRaw) { validationErrors.push(`Row ${rowNum}: Sale Date is missing.`); rowHasError = true; }
+                        else { formattedSaleDate = formatExcelDate(saleDateRaw); if (!/^\d{4}-\d{2}-\d{2}$/.test(formattedSaleDate)) { validationErrors.push(`Row ${rowNum}: Invalid Sale Date format for "${saleDateRaw}". Use YYYY-MM-DD.`); rowHasError = true; } }
+
+                        if (!rowHasError && quantitySold > totalQuantity) { validationErrors.push(`Row ${rowNum}: Quantity Sold (${quantitySold}) cannot be greater than Total Quantity (${totalQuantity}).`); rowHasError = true; }
+
+                        if (rowHasError) continue; // Skip this row if it has validation errors
+
+                        const recordData = {
+                            product_id: productId, // Will be generated by PHP if empty
+                            product_name: productName,
+                            quantity_sold: quantitySold,
+                            total_quantity: totalQuantity,
+                            total_amount: totalAmount,
+                            sale_date: formattedSaleDate
+                        };
+
+                        // Send to backend
+                        try {
+                            const response = await fetch(API_ADD_SALE_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(recordData)
+                            });
+                            const result = await response.json();
+                            if (result.success) {
+                                successfullyAddedCount++;
+                                recordsFromExcel.push({
+                                    ...recordData,
+                                    product_id: result.generated_product_id || productId,
+                                    tempId: result.sale_id || nextTempId++
+                                });
+                            } else {
+                                validationErrors.push(`Row ${rowNum} (Server): ${result.message || 'Unknown server error.'}`);
+                            }
+                        } catch (serverError) {
+                            validationErrors.push(`Row ${rowNum} (Network/Server Error): ${serverError.message}`);
+                        }
+                    }
+
+                    allRecords = allRecords.concat(recordsFromExcel); // Add successfully processed records
+
+                    if (validationErrors.length > 0) {
+                        const maxErrorsToShow = 5;
+                        let errorMsg = validationErrors.slice(0, maxErrorsToShow).join('<br>');
+                        if (validationErrors.length > maxErrorsToShow) {
+                            errorMsg += `<br>...and ${validationErrors.length - maxErrorsToShow} more errors.`;
+                        }
+                        displayMessage(errorMessageBanner, errorTextEl, `Errors in '${originalFileName}':<br>${errorMsg}`, 'error');
+                    }
+
+                    if (successfullyAddedCount > 0) {
+                        displayMessage(successMessageBanner, successTextEl, `Successfully added ${successfullyAddedCount} record(s) from '${originalFileName}' to the server.`, 'success');
+                    } else if (jsonData.length > 0 && validationErrors.length === jsonData.length) {
+                         displayMessage(errorMessageBanner, errorTextEl, `No valid records found in '${originalFileName}' to add after validation.`, 'error');
+                    }
+
+
+                    renderUI(filterRecords(searchInput.value.toLowerCase()));
+
+                } catch (error) {
+                    console.error('Error processing Excel file:', error);
+                    displayMessage(errorMessageBanner, errorTextEl, `Critical error processing Excel file '${originalFileName}'. Ensure it's a valid .xlsx or .xls file.`, 'error');
+                    renderUI([]); // Render empty state on critical error
+                } finally {
+                    fileUpload.value = ''; // Reset file input
+                    // fileNameDisplay.textContent = ''; // Clear file name display after processing
+                }
+            };
+            reader.onerror = function() {
+                displayMessage(errorMessageBanner, errorTextEl, `Error reading file '${originalFileName}'.`, 'error');
+                fileUpload.value = '';
+                // fileNameDisplay.textContent = '';
+                renderUI([]);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+
+        function renderUI(recordsToDisplay) {
+            dataTableBody.innerHTML = '';
+            const hasAnyData = allRecords.length > 0;
+
+            // Show/hide sections based on whether there's any data at all
+            [chartContainer, salesSummaryContainer, demandRankingContainer, tableControls, tableContainer].forEach(el => {
+                el.style.display = hasAnyData ? 'block' : 'none';
+            });
+             if (tableControls.style.display === 'block') tableControls.style.display = 'flex'; // because it's a flex container
+
+            if (!recordsToDisplay || recordsToDisplay.length === 0) {
+                dataTableBody.innerHTML = `<tr><td colspan="9" class="px-6 py-10 text-center text-gray-500 italic">${hasAnyData ? 'No records found matching your search criteria.' : 'Upload an Excel file or add records manually to get started.'}</td></tr>`;
+            } else {
+                recordsToDisplay.forEach(item => {
+                    const demandPercentage = item['total_quantity'] > 0 ? (item['quantity_sold'] / item['total_quantity']) * 100 : (item['quantity_sold'] > 0 ? Infinity : 0); // Handle division by zero or positive sales with zero total
+                    let statusText = '';
+                    let statusClasses = 'status-gradient'; // Base class
+
+                    if (demandPercentage === Infinity || demandPercentage >= 90) { statusText = 'High Demand'; statusClasses += ' status-gradient-high'; }
+                    else if (demandPercentage >= 70) { statusText = 'Balanced'; statusClasses += ' status-gradient-balanced'; }
+                    else if (demandPercentage >= 50) { statusText = 'Low Demand'; statusClasses += ' status-gradient-low'; }
+                    else if (item['total_quantity'] === 0 && item['quantity_sold'] > 0) { statusText = 'Sold > Total!'; statusClasses = 'status-gradient-error'; } // Error if sold > 0 but total is 0
+                    else { statusText = 'Very Low Demand'; statusClasses += ' status-gradient-very-low'; }
+
+
+                    const row = dataTableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${item['product_id']}</td>
+                        <td>${item['product_name']}</td>
+                        <td>${item['quantity_sold']}</td>
+                        <td>${item['total_quantity']}</td>
+                        <td>${item['total_amount'].toFixed(2)}</td>
+                        <td>${item['sale_date']}</td>
+                        <td>${demandPercentage === Infinity ? 'N/A (Check Totals)' : demandPercentage.toFixed(1) + '%'}</td>
+                        <td><span class="${statusClasses}">${statusText}</span></td>
+                        <td><button class="button button-danger delete-button" data-temp-id="${item.tempId}">Delete</button></td>
+                    `;
+                });
+            }
+
+            updateSummaryAndChart(allRecords); // Update summaries and chart with ALL records, not just filtered ones
+            if (hasAnyData) {
+                // Only hide general error banner if data is present, specific errors might still show
+                // hideMessage(errorMessageBanner);
+            }
+        }
+
+        function updateSummaryAndChart(records) {
+             let totalAmountSum = 0;
+             let totalQuantitySoldSum = 0;
+             const productAggregatedData = {};
+             ALLOWED_PRODUCT_NAMES.forEach(type => { productAggregatedData[type] = { sold: 0, total: 0, count: 0, totalAmount: 0 }; });
+
+             records.forEach(item => {
+                 totalAmountSum += parseFloat(item['total_amount']) || 0;
+                 totalQuantitySoldSum += parseFloat(item['quantity_sold']) || 0;
+                 const product = item['product_name'];
+                 if (productAggregatedData.hasOwnProperty(product)) {
+                     productAggregatedData[product].sold += parseFloat(item['quantity_sold']) || 0;
+                     productAggregatedData[product].total += parseFloat(item['total_quantity']) || 0;
+                     productAggregatedData[product].totalAmount += parseFloat(item['total_amount']) || 0;
+                     productAggregatedData[product].count++;
+                 }
+             });
+
+             let minDemandPercentage = Infinity; let leastDemandedProducts = []; const chartLabels = []; const chartTotalData = []; const chartSoldData = []; let salesSummaryHTML = ''; const demandRankingData = [];
+             ALLOWED_PRODUCT_NAMES.forEach(product => {
+                 const stats = productAggregatedData[product];
+                 if (stats && stats.count > 0) {
+                     chartLabels.push(product);
+                     chartTotalData.push(stats.total);
+                     chartSoldData.push(stats.sold);
+                     salesSummaryHTML += `<li><span class="product-name">${product}</span><span class="sales-value">${stats.totalAmount.toFixed(2)} TK</span></li>`;
+                     const overallDemand = stats.total > 0 ? (stats.sold / stats.total) * 100 : (stats.sold > 0 ? Infinity : 0);
+                     demandRankingData.push({ product: product, demand: overallDemand });
+                     if (overallDemand !== Infinity && overallDemand < minDemandPercentage) { minDemandPercentage = overallDemand; leastDemandedProducts = [product]; }
+                     else if (overallDemand !== Infinity && overallDemand === minDemandPercentage) { leastDemandedProducts.push(product); }
+                 } else {
+                     salesSummaryHTML += `<li><span class="product-name">${product}</span><span class="sales-value text-gray-500">0.00 TK</span></li>`;
+                 }
+             });
+
+             demandRankingData.sort((a, b) => { // Handle Infinity for sorting
+                if (a.demand === Infinity && b.demand === Infinity) return 0;
+                if (a.demand === Infinity) return -1; // Infinity comes first (highest demand)
+                if (b.demand === Infinity) return 1;
+                return b.demand - a.demand;
+             });
+
+             let demandRankingHTML = '';
+             if (demandRankingData.length > 0) {
+                demandRankingData.forEach((item, index) => {
+                    let statusText = '';
+                    if (index === 0 && item.demand > 0) statusText = '(Highest)';
+                    if (index === demandRankingData.length - 1 && demandRankingData.length > 1 && item.demand !== Infinity && item.demand < 100) statusText = '(Lowest)'; // Avoid lowest if it's also Infinity or 100%
+                    demandRankingHTML += `<li><div><span class="product-name">${item.product}</span><span class="rank-status">${statusText}</span></div><span class="demand-value">${item.demand === Infinity ? 'N/A' : item.demand.toFixed(1) + '%'}</span></li>`;
+                });
+             } else { demandRankingHTML = '<li class="text-gray-500 italic">No ranking data yet</li>'; }
+             demandRankingList.innerHTML = demandRankingHTML;
+
+             totalSalesElement.textContent = totalAmountSum.toFixed(2) + " TK";
+             totalDistributionElement.textContent = totalQuantitySoldSum.toLocaleString();
+
+             if (records.length === 0) {
+                 overstockList.innerHTML = '<li>No data yet</li>';
+                 salesSummaryList.innerHTML = '<li class="text-gray-500 italic">No sales data yet</li>';
+                 demandRankingList.innerHTML = '<li class="text-gray-500 italic">No ranking data yet</li>';
+             } else if (leastDemandedProducts.length > 0 && minDemandPercentage !== Infinity) {
+                 overstockList.innerHTML = [...new Set(leastDemandedProducts)].map(item => `<li>${item} (${minDemandPercentage.toFixed(1)}% avg)</li>`).join('');
+                 salesSummaryList.innerHTML = salesSummaryHTML || '<li class="text-gray-500 italic">No sales data for allowed products.</li>';
+             } else if (chartLabels.length > 0) { // Some data exists but no "least demanded" clearly identified
+                 overstockList.innerHTML = '<li>All items have good demand or data is insufficient to determine lowest.</li>';
+                 salesSummaryList.innerHTML = salesSummaryHTML || '<li class="text-gray-500 italic">No sales data for allowed products.</li>';
+             } else { // No data for allowed products
+                 overstockList.innerHTML = '<li>No data for allowed products.</li>';
+                 salesSummaryList.innerHTML = '<li class="text-gray-500 italic">No sales data for allowed products.</li>';
+                 demandRankingList.innerHTML = '<li class="text-gray-500 italic">No ranking data yet</li>';
+             }
+
+
+             if (chartLabels.length > 0) { renderQuantityChart(chartLabels, chartTotalData, chartSoldData); }
+             else { if (quantityChartInstance) { quantityChartInstance.destroy(); quantityChartInstance = null; } }
+        }
+
+        function renderQuantityChart(labels, totalData, soldData) {
+             const ctx = quantityChartCanvas.getContext('2d');
+             if (quantityChartInstance) { quantityChartInstance.destroy(); }
+             quantityChartInstance = new Chart(ctx, {
+                 type: 'bar',
+                 data: {
+                     labels: labels,
+                     datasets: [
+                         { label: 'Total Qty', data: totalData, backgroundColor: 'rgba(253, 186, 116, 0.7)', borderColor: 'rgba(251, 146, 60, 1)', borderWidth: 1, borderRadius: 4 }, // orange-300, orange-500
+                         { label: 'Qty Sold', data: soldData, backgroundColor: 'rgba(249, 115, 22, 0.7)', borderColor: 'rgba(234, 88, 12, 1)', borderWidth: 1, borderRadius: 4 } // orange-600, orange-700
+                     ]
+                 },
+                 options: {
+                     responsive: true, maintainAspectRatio: true,
+                     plugins: { legend: { position: 'bottom', labels: { padding: 20, boxWidth: 12, font: { size: 13 } } } },
+                     scales: {
+                         y: { beginAtZero: true, grid: { color: '#fed7aa' }, ticks: { color: '#7c2d12' }, title: {display: true, text: 'Quantity', color: '#9a3412'} }, // orange-200 grid, orange-900 ticks, orange-800 title
+                         x: { grid: { display: false }, ticks: { color: '#7c2d12' }, title: {display: true, text: 'Product Name', color: '#9a3412'} }
+                     }
+                 }
+             });
+        }
+    </script>
+</body>
+</html>

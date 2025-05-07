@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meat Inventory Tracking</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Apply Inter font to the body */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Updated: Add a subtle light orange gradient background */
+            background-image: linear-gradient(to top, #ffedd5, #fed7aa); /* Light orange gradient (orange-100 to orange-200) */
+        }
+        /* Enhanced focus states for better accessibility and flair */
+        input:focus, button:focus, canvas:focus, select:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            /* Use a more prominent ring color - adjusted slightly for orange theme */
+            box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.5); /* Tailwind orange-400 focus ring */
+        }
+        input:focus, select:focus {
+             border-color: #fb923c; /* orange-400 */
+        }
+
+        /* Hide the default file input appearance */
+        #excel-file-input {
+            width: 0.1px;
+            height: 0.1px;
+            opacity: 0;
+            overflow: hidden;
+            position: absolute;
+            z-index: -1;
+        }
+        /* Style the label to look like the button in the image */
+        .excel-choose-file-label {
+            display: inline-flex; /* Use flex for icon alignment */
+            align-items: center;
+            gap: 0.5rem; /* Space between icon and text */
+            padding: 0.5rem 1rem;
+            background-color: #e0e7ff; /* Light indigo/blue */
+            color: #4f46e5; /* Indigo text */
+            border: 1px solid #c7d2fe;
+            border-radius: 0.375rem; /* rounded-md */
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease-in-out; /* Smoother transition */
+        }
+        .excel-choose-file-label:hover {
+            background-color: #c7d2fe;
+            transform: translateY(-1px); /* Slight lift on hover */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #file-name {
+            margin-left: 1rem;
+            font-style: italic;
+            color: #6b7280; /* text-gray-500 */
+        }
+        /* Container for the chart */
+        #chart-container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: #ffffff; /* White background for contrast */
+            border-radius: 0.75rem; /* Slightly larger rounding */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Tailwind shadow-lg */
+        }
+        /* Style select dropdown arrow */
+        select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        /* Style for the search container */
+        .search-container {
+            border: 1px solid #e5e7eb; /* border-gray-200 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 1.5rem; /* p-6 */
+            background-color: #fff7ed; /* Very light orange background (orange-50) */
+            margin-bottom: 1.5rem; /* mb-6 */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03); /* Subtle shadow */
+        }
+        /* Table row hover effect */
+        #inventory-table tbody tr:hover {
+            background-color: #ffedd5; /* Lighter orange on hover (orange-100) */
+        }
+        /* Add alternating row colors */
+        #inventory-table tbody tr:nth-child(even) {
+            background-color: #fffaf0; /* Slightly off-white/cream */
+        }
+         #inventory-table tbody tr:nth-child(even):hover {
+            background-color: #ffedd5; /* Consistent hover color */
+        }
+
+        /* General button hover/active styles */
+        button {
+            transition: all 0.15s ease-in-out;
+        }
+        button:hover {
+             filter: brightness(1.05); /* Slightly brighten on hover */
+             transform: translateY(-1px);
+        }
+         button:active {
+             transform: translateY(0px);
+             filter: brightness(0.95);
+         }
+         /* Specific button adjustments for orange theme */
+         #search-button {
+             background-color: #fed7aa; /* orange-200 */
+             color: #9a3412; /* orange-800 */
+         }
+         #search-button:hover {
+             background-color: #fdba74; /* orange-300 */
+             filter: brightness(1.0); /* Override general filter */
+         }
+         .excel-choose-file-label {
+             background-color: #ffedd5; /* orange-100 */
+             color: #c2410c; /* orange-700 */
+             border-color: #fed7aa; /* orange-200 */
+         }
+         .excel-choose-file-label:hover {
+             background-color: #fed7aa; /* orange-200 */
+         }
+         #upload-excel-btn {
+             background-color: #dcfce7; /* green-100 */
+             color: #166534; /* green-800 */
+         }
+         #upload-excel-btn:hover {
+              background-color: #bbf7d0; /* green-200 */
+              filter: brightness(1.0);
+         }
+         /* Error and Success Message Styling */
+        .error-message, .success-message {
+            border-left-width: 4px;
+            padding: 1rem 1.5rem; /* Increased padding */
+            margin-bottom: 1.5rem; /* Increased margin */
+            border-radius: 0.375rem; /* rounded-md */
+            font-size: 0.95rem; /* Slightly larger font */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Subtle shadow */
+        }
+        .error-message {
+            background-color: #fee2e2; /* red-100 */
+            border-color: #ef4444; /* red-500 */
+            color: #b91c1c; /* red-700 */
+        }
+        .success-message {
+            background-color: #dcfce7; /* green-100 */
+            border-color: #22c55e; /* green-500 */
+            color: #15803d; /* green-700 */
+        }
+
+
+    </style>
+</head>
+<body class="bg-gray-100 p-6 md:p-8 rounded-lg"> <div class="container mx-auto bg-white p-8 md:p-10 rounded-xl shadow-2xl border border-gray-200">
+        <h1 class="text-4xl font-semibold text-gray-800 mb-10 text-center">Meat Inventory Tracking</h1>
+
+        <div id="error-message" class="error-message" style="display: none;">
+            <strong class="font-bold">Error!</strong>
+            <span class="block sm:inline ml-2" id="error-text"></span>
+        </div>
+        <div id="success-message" class="success-message" style="display: none;">
+            <strong class="font-bold">Success!</strong>
+            <span class="block sm:inline ml-2" id="success-text"></span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10 border-b pb-10 border-gray-200">
+            <form id="inventory-form" class="space-y-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Add Item Manually
+                </h2>
+                <div>
+                    <label for="meat-type" class="block text-gray-700 text-base font-bold mb-2">Meat Type:</label>
+                    <select id="meat-type" name="meat-type" required class="shadow-sm appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:border-orange-400 text-base bg-white transition duration-150 ease-in-out">
+                        <option value="" disabled selected>Select Meat Type</option>
+                        <option value="Chicken">Chicken</option>
+                        <option value="Beef">Beef</option>
+                        <option value="Mutton">Mutton</option>
+                        </select>
+                </div>
+                <div>
+                    <label for="quantity" class="block text-gray-700 text-base font-bold mb-2">Quantity (KG):</label>
+                    <input type="number" id="quantity" name="quantity" required class="shadow-sm appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:border-orange-400 text-base transition duration-150 ease-in-out" min="0" step="any" placeholder="e.g., 100">
+                </div>
+                <div>
+                    <label for="processing-date" class="block text-gray-700 text-base font-bold mb-2">Processing Date:</label>
+                    <input type="date" id="processing-date" name="processing-date" required class="shadow-sm appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:border-orange-400 text-base transition duration-150 ease-in-out">
+                </div>
+                <div>
+                    <label for="storage-location" class="block text-gray-700 text-base font-bold mb-2">Storage Location:</label>
+                    <input type="text" id="storage-location" name="storage-location" required class="shadow-sm appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:border-orange-400 text-base transition duration-150 ease-in-out" placeholder="e.g., Freezer 1, Warehouse A">
+                </div>
+                <div>
+                    <label for="batch-number" class="block text-gray-700 text-base font-bold mb-2">Batch Number:</label>
+                    <input type="text" id="batch-number" name="batch-number" required class="shadow-sm appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:border-orange-400 text-base transition duration-150 ease-in-out" placeholder="e.g., BNO12345">
+                </div>
+                <div>
+                    <label for="expiration-date" class="block text-gray-700 text-base font-bold mb-2">Expiration Date:</label>
+                    <input type="date" id="expiration-date" name="expiration-date" required class="shadow-sm appearance-none border border-gray-300 rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:border-orange-400 text-base transition duration-150 ease-in-out">
+                </div>
+                <button type="submit" class="w-full flex justify-center items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 text-base">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Add to Inventory
+                </button>
+            </form>
+
+            <div class="space-y-6">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Import from Excel
+                </h2>
+                <p class="text-gray-600 text-sm leading-relaxed">
+                    Upload an Excel file (.xlsx, .xls) with columns:
+                    <code class="bg-gray-200 px-1 rounded text-xs font-mono">Meat Type</code>,
+                    <code class="bg-gray-200 px-1 rounded text-xs font-mono">Quantity</code>,
+                    <code class="bg-gray-200 px-1 rounded text-xs font-mono">Processing Date</code>,
+                    <code class="bg-gray-200 px-1 rounded text-xs font-mono">Storage Location</code>,
+                    <code class="bg-gray-200 px-1 rounded text-xs font-mono">Batch Number</code>,
+                    <code class="bg-gray-200 px-1 rounded text-xs font-mono">Expiration Date</code>.
+                    <br>The first row must contain these exact headers (case-insensitive). Dates should be in YYYY-MM-DD format or Excel date format.
+                </p>
+                <div class="border border-gray-300 rounded-lg p-4 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center">
+                        <input type="file" id="excel-file-input" accept=".xlsx, .xls" class="absolute">
+                        <label for="excel-file-input" class="excel-choose-file-label">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+                            </svg>
+                            Choose File
+                        </label>
+                        <span id="file-name" class="ml-4 text-gray-600 italic text-sm">No file chosen</span>
+                    </div>
+                    <button id="upload-excel-btn" class="bg-green-100 hover:bg-green-200 text-green-800 font-semibold py-2 px-5 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-green-500 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Import Data
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="chart-section" class="mb-12 pt-10 border-t border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6 text-center flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Inventory Summary by Meat Type
+            </h2>
+            <div id="chart-container">
+                <canvas id="inventory-chart" role="img" aria-label="Bar chart showing total quantity per meat type"></canvas>
+                <p id="chart-placeholder" class="text-center text-gray-500 py-10" style="display: none;">Add inventory items to see the chart.</p>
+            </div>
+        </div>
+
+        <div class="mt-10 pt-10 border-t border-gray-200">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                Inventory List
+            </h2>
+
+            <div class="search-container">
+                <label for="search-inventory" class="block text-gray-700 text-base font-bold mb-2">Search Records</label>
+                <div class="flex items-center space-x-3">
+                    <div class="relative flex-grow">
+                        <input type="text" id="search-inventory" name="search-inventory" class="shadow-sm appearance-none border border-gray-300 rounded-md w-full py-2 pl-10 pr-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-base" placeholder="Search by Meat Type, Location, or Batch No...">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </div>
+                    <button id="search-button" class="bg-orange-200 hover:bg-orange-300 text-orange-800 font-semibold py-2 px-5 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-orange-500 text-sm flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+                        </svg>
+                        Search
+                    </button>
+                    <button id="clear-search-button" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-5 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-500 text-sm flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto shadow-md rounded-lg border border-gray-200">
+                <table id="inventory-table" class="min-w-full table-auto">
+                    <thead class="bg-gray-100 border-b border-gray-300">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Meat Type</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Quantity (KG)</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Processing Date</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Storage Location</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Batch Number</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Expiration Date</th>
+                            <th class="px-6 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200 text-gray-700 text-base">
+                        <tr class="no-items-row">
+                            <td colspan="7" class="px-6 py-10 text-center text-gray-500 italic">No items in inventory yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const inventoryForm = document.getElementById('inventory-form');
+        const inventoryTable = document.getElementById('inventory-table');
+        const inventoryTableBody = inventoryTable.querySelector('tbody');
+        const searchInput = document.getElementById('search-inventory');
+        const searchButtonEl = document.getElementById('search-button'); // Renamed to avoid conflict
+        const clearSearchButton = document.getElementById('clear-search-button');
+        const errorMessageEl = document.getElementById('error-message'); // Renamed
+        const errorTextEl = document.getElementById('error-text'); // Renamed
+        const successMessageEl = document.getElementById('success-message'); // Renamed
+        const successTextEl = document.getElementById('success-text'); // Renamed
+        const fileInput = document.getElementById('excel-file-input');
+        const fileNameDisplay = document.getElementById('file-name');
+        const uploadButton = document.getElementById('upload-excel-btn');
+        const chartCanvas = document.getElementById('inventory-chart');
+        const chartPlaceholder = document.getElementById('chart-placeholder');
+        const chartSection = document.getElementById('chart-section');
+        const meatTypeSelect = document.getElementById('meat-type');
+
+        // API Endpoint
+        const API_ADD_INVENTORY_URL = 'php/api_add_inventory.php';
+        // For now, we'll still use a local array for display.
+        // Ideally, after adding/importing, you'd fetch the updated list from the server.
+        let inventory = []; // This will store items fetched or added locally for now
+        let selectedFile = null;
+        let inventoryChartInstance = null;
+
+        // --- Helper Functions ---
+
+        /** Displays an error message. */
+        function displayErrorMessage(message) {
+            errorMessageEl.style.display = 'block';
+            errorTextEl.textContent = message;
+            successMessageEl.style.display = 'none';
+            scrollToMessage(errorMessageEl);
+        }
+
+        /** Displays a success message and hides it after a delay. */
+        function displaySuccessMessage(message) {
+            successMessageEl.style.display = 'block';
+            successTextEl.textContent = message;
+            errorMessageEl.style.display = 'none';
+            scrollToMessage(successMessageEl);
+            setTimeout(() => hideMessage(successMessageEl), 5000);
+        }
+        
+        /** Scrolls to the message if it's not fully visible */
+        function scrollToMessage(element) {
+            const msgRect = element.getBoundingClientRect();
+            if (msgRect.top < 0 || msgRect.bottom > window.innerHeight) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+
+        /** Hides a specific message element. */
+        function hideMessage(element) {
+            element.style.display = 'none';
+        }
+
+        /** Formats Excel serial date number or JS Date object to 'YYYY-MM-DD'. */
+        function formatExcelDate(excelDate) {
+            if (excelDate instanceof Date && !isNaN(excelDate.getTime())) {
+                try {
+                    const year = excelDate.getFullYear();
+                    if (year < 1900 || year > 2100) return excelDate.toLocaleDateString(); // Fallback for invalid year range
+                    const month = String(excelDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(excelDate.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                } catch (e) { return excelDate.toLocaleDateString(); } // Fallback
+            }
+            if (typeof excelDate === 'number' && !isNaN(excelDate) && excelDate >= 1 && excelDate <= 2958465) { // Common Excel date range
+                try {
+                    const excelEpoch = Date.UTC(1899, 11, 30); // Excel epoch starts Dec 30, 1899 for serial 0
+                    const jsMillis = excelEpoch + excelDate * 86400000; // 86400000 ms in a day
+                    const jsDate = new Date(jsMillis);
+                    if (isNaN(jsDate.getTime())) return String(excelDate); // Fallback if conversion fails
+                    const year = jsDate.getUTCFullYear();
+                    if (year < 1900 || year > 2100) return String(excelDate); // Fallback for invalid year range
+                    const month = String(jsDate.getUTCMonth() + 1).padStart(2, '0');
+                    const day = String(jsDate.getUTCDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                } catch (e) { return String(excelDate); } // Fallback
+            }
+             // If it's already a string in YYYY-MM-DD, return it
+            if (typeof excelDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(excelDate)) {
+                return excelDate;
+            }
+            // Try to parse common string date formats (e.g., MM/DD/YYYY)
+            if (typeof excelDate === 'string') {
+                try {
+                    const d = new Date(excelDate);
+                    if (!isNaN(d.getTime())) {
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        if (year > 1900 && year < 2100) return `${year}-${month}-${day}`;
+                    }
+                } catch (e) { /* ignore, will return original string */ }
+            }
+            return String(excelDate); // Fallback: return as string
+        }
+
+
+        /** Validates form data (manual or Excel). */
+        function validateItemData(itemData, rowIndex) {
+            const prefix = rowIndex ? `Row ${rowIndex}: ` : '';
+            // Normalize keys to lowercase for consistent access
+            const lowerCaseItemData = Object.keys(itemData).reduce((acc, key) => {
+                 const lowerKey = typeof key === 'string' ? key.toLowerCase().trim() : key;
+                 acc[lowerKey] = typeof itemData[key] === 'string' ? itemData[key].trim() : itemData[key];
+                 return acc;
+            }, {});
+
+            const meatType = lowerCaseItemData['meat type'] || lowerCaseItemData['meat_type'];
+            const quantity = lowerCaseItemData['quantity'];
+            let processingDateStr = lowerCaseItemData['processing date'] || lowerCaseItemData['processing_date'];
+            const storageLocation = lowerCaseItemData['storage location'] || lowerCaseItemData['storage_location'];
+            const batchNumber = lowerCaseItemData['batch number'] || lowerCaseItemData['batch_number'];
+            let expirationDateStr = lowerCaseItemData['expiration date'] || lowerCaseItemData['expiration_date'];
+
+            if (!meatType) {
+                 if (!rowIndex && meatTypeSelect && meatTypeSelect.value === "") throw new Error(`${prefix}Please select a Meat Type.`);
+                 else throw new Error(`${prefix}Meat Type is missing or empty.`);
+            }
+            if (quantity === undefined || quantity === null || String(quantity).trim() === "") throw new Error(`${prefix}Quantity is missing or empty.`);
+            if (isNaN(Number(quantity)) || Number(quantity) < 0) throw new Error(`${prefix}Quantity must be a non-negative number. Found: '${quantity}'`);
+
+            if (processingDateStr === undefined || processingDateStr === null || String(processingDateStr).trim() === "") throw new Error(`${prefix}Processing Date is missing or empty.`);
+            if (storageLocation === undefined || storageLocation === null || String(storageLocation).trim() === "") throw new Error(`${prefix}Storage Location is missing or empty.`);
+            if (batchNumber === undefined || batchNumber === null || String(batchNumber).trim() === "") throw new Error(`${prefix}Batch Number is missing or empty.`);
+            if (expirationDateStr === undefined || expirationDateStr === null || String(expirationDateStr).trim() === "") throw new Error(`${prefix}Expiration Date is missing or empty.`);
+
+            processingDateStr = formatExcelDate(processingDateStr);
+            expirationDateStr = formatExcelDate(expirationDateStr);
+
+            const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!dateRegex.test(processingDateStr)) throw new Error(`${prefix}Processing Date must be in YYYY-MM-DD format. Found: '${processingDateStr}'`);
+            if (!dateRegex.test(expirationDateStr)) throw new Error(`${prefix}Expiration Date must be in YYYY-MM-DD format. Found: '${expirationDateStr}'`);
+
+            const processingDate = new Date(processingDateStr + 'T00:00:00Z'); // Ensure consistent comparison by using UTC midnight
+            const expirationDate = new Date(expirationDateStr + 'T00:00:00Z');
+
+            if (isNaN(processingDate.getTime())) throw new Error(`${prefix}Invalid Processing Date: ${processingDateStr}`);
+            if (isNaN(expirationDate.getTime())) throw new Error(`${prefix}Invalid Expiration Date: ${expirationDateStr}`);
+            if (processingDate > expirationDate) throw new Error(`${prefix}Expiration Date (${expirationDateStr}) cannot be earlier than Processing Date (${processingDateStr}).`);
+
+            return {
+                meat_type: meatType, quantity: Number(quantity), processing_date: processingDateStr,
+                storage_location: storageLocation, batch_number: batchNumber, expiration_date: expirationDateStr
+            };
+        }
+
+        // --- Inventory Management ---
+
+        /** Handles manual form submission. */
+        async function addItemManually(event) {
+            event.preventDefault();
+            hideMessage(errorMessageEl); hideMessage(successMessageEl);
+            const submitButton = inventoryForm.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Adding...`;
+
+            const formData = new FormData(inventoryForm);
+            const rawItemData = {
+                'meat_type': formData.get('meat-type'), 'quantity': formData.get('quantity'),
+                'processing_date': formData.get('processing-date'), 'storage_location': formData.get('storage-location'),
+                'batch_number': formData.get('batch-number'), 'expiration_date': formData.get('expiration-date')
+            };
+
+            try {
+                const validatedData = validateItemData(rawItemData); // Validate before sending
+
+                const response = await fetch(API_ADD_INVENTORY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(validatedData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Add to local array for immediate UI update.
+                    // Ideally, you'd fetch the full list or the server would return the added item.
+                    inventory.push({...validatedData, id: result.item_id || Date.now() }); // Use server ID if available
+                    filterAndDisplayInventory();
+                    inventoryForm.reset();
+                    displaySuccessMessage(result.message || 'Item added successfully.');
+                } else {
+                    displayErrorMessage(result.message || 'Failed to add item to inventory.');
+                }
+            } catch (error) {
+                console.error('Error adding item:', error);
+                displayErrorMessage(error.message || 'An unexpected error occurred.');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    Add to Inventory`;
+            }
+        }
+
+
+        /** Filters inventory based on search input and updates table. */
+        function filterAndDisplayInventory() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            let filteredInventory = inventory; // Assuming 'inventory' is your local array of items
+            if (searchTerm) {
+                filteredInventory = inventory.filter(item =>
+                    String(item['meat_type'] || '').toLowerCase().includes(searchTerm) ||
+                    String(item['storage_location'] || '').toLowerCase().includes(searchTerm) ||
+                    String(item['batch_number'] || '').toLowerCase().includes(searchTerm)
+                );
+            }
+            updateInventoryTable(filteredInventory);
+            updateChart();
+        }
+
+        /** Updates the inventory table display. */
+        function updateInventoryTable(itemsToDisplay = inventory) {
+            inventoryTableBody.innerHTML = ''; // Clear existing rows
+            if (itemsToDisplay.length === 0) {
+                const message = inventory.length === 0 ? 'No items in inventory yet.' : 'No items match your search.';
+                inventoryTableBody.innerHTML = `<tr class="no-items-row"><td colspan="7" class="px-6 py-10 text-center text-gray-500 italic">${message}</td></tr>`;
+            } else {
+                // Sort by processing date, newest first
+                itemsToDisplay.sort((a, b) => new Date(b['processing_date']) - new Date(a['processing_date']));
+                itemsToDisplay.forEach(item => {
+                    const row = inventoryTableBody.insertRow();
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${item['meat_type']}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${item['quantity']}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${item['processing_date']}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${item['storage_location']}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono">${item['batch_number']}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${item['expiration_date']}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                            <button onclick="deleteInventoryItem('${item.id || item.batch_number}')" class="text-red-600 hover:text-red-800 transition-colors duration-150" title="Delete Item">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </td>
+                    `;
+                });
+            }
+        }
+
+        // Placeholder for delete function - this would ideally also call a backend API
+        function deleteInventoryItem(itemId) {
+            if (confirm(`Are you sure you want to delete item with ID/Batch: ${itemId}? This action cannot be undone locally.`)) {
+                inventory = inventory.filter(item => (item.id || item.batch_number) !== itemId);
+                filterAndDisplayInventory();
+                displaySuccessMessage(`Item ${itemId} removed from local list.`);
+                // TODO: Add API call to delete from server database here
+                // Example:
+                // fetch(`php/api_delete_inventory.php?id=${itemId}`, { method: 'DELETE' })
+                // .then(response => response.json())
+                // .then(result => { /* handle server response */ });
+            }
+        }
+
+
+        // --- Charting ---
+
+        /** Updates the inventory summary bar chart. */
+        function updateChart(dataSet = inventory) {
+             if (inventory.length === 0) {
+                 chartSection.style.display = 'none';
+                 if (inventoryChartInstance) { inventoryChartInstance.destroy(); inventoryChartInstance = null; }
+                 return;
+             } else {
+                 chartSection.style.display = 'block';
+             }
+            const aggregatedData = dataSet.reduce((acc, item) => {
+                const type = item['meat_type']; // Use the correct key from validatedData
+                const quantity = Number(item['quantity']);
+                if (!isNaN(quantity)) acc[type] = (acc[type] || 0) + quantity; return acc;
+            }, {});
+            const labels = Object.keys(aggregatedData); const data = Object.values(aggregatedData);
+            if (inventoryChartInstance) inventoryChartInstance.destroy();
+            if (labels.length === 0) {
+                 chartCanvas.style.display = 'none'; chartPlaceholder.style.display = 'block'; inventoryChartInstance = null; return;
+            } else {
+                 chartCanvas.style.display = 'block'; chartPlaceholder.style.display = 'none';
+            }
+            const ctx = chartCanvas.getContext('2d');
+            const chartColors = ['rgba(54, 162, 235, 0.7)', 'rgba(255, 99, 132, 0.7)', 'rgba(75, 192, 192, 0.7)', 'rgba(255, 206, 86, 0.7)', 'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)', 'rgba(201, 203, 207, 0.7)'];
+            const borderColors = chartColors.map(color => color.replace('0.7', '1'));
+            inventoryChartInstance = new Chart(ctx, {
+                type: 'bar', data: { labels: labels, datasets: [{ label: 'Total Quantity (KG)', data: data, backgroundColor: labels.map((_, i) => chartColors[i % chartColors.length]), borderColor: labels.map((_, i) => borderColors[i % borderColors.length]), borderWidth: 1, borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Quantity (KG)', font: { weight: 'bold'} }, grid: { color: '#e5e7eb' } }, x: { title: { display: true, text: 'Meat Type', font: { weight: 'bold'} }, grid: { display: false } } }, plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(0, 0, 0, 0.8)', titleFont: { size: 14 }, bodyFont: { size: 12 }, callbacks: { label: context => `${context.dataset.label || ''}: ${context.parsed.y !== null ? context.parsed.y.toFixed(2) + ' KG' : ''}` } } }, animation: { duration: 800, easing: 'easeOutQuart' } }
+            });
+        }
+
+        // --- Excel File Handling ---
+
+        /** Handles file selection. */
+        function handleFileSelect(event) {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                fileNameDisplay.textContent = selectedFile.name; uploadButton.disabled = false;
+                hideMessage(errorMessageEl); hideMessage(successMessageEl);
+            } else {
+                fileNameDisplay.textContent = 'No file chosen'; uploadButton.disabled = true; selectedFile = null;
+            }
+        }
+
+        /** Reads and processes the selected Excel file. */
+        async function processExcelFile() {
+            if (!selectedFile) { displayErrorMessage("No file selected."); return; }
+            uploadButton.disabled = true;
+            uploadButton.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...`;
+            hideMessage(errorMessageEl); hideMessage(successMessageEl);
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                try {
+                    const data = event.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary', cellDates: true }); // cellDates: true is important
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: null }); // raw: false helps with dates
+
+                    let itemsAddedToServer = 0;
+                    let localItemsAdded = 0;
+                    let errors = [];
+
+                    for (let i = 0; i < jsonData.length; i++) {
+                        const row = jsonData[i];
+                        const rowIndex = i + 1; // For user-friendly error messages (1-based index)
+                        try {
+                            const validatedData = validateItemData(row, rowIndex + 1); // Excel row numbers are usually 1-based, data starts at row 2
+
+                            const response = await fetch(API_ADD_INVENTORY_URL, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(validatedData)
+                            });
+                            const result = await response.json();
+
+                            if (result.success) {
+                                itemsAddedToServer++;
+                                // Add to local array for immediate UI update
+                                inventory.push({...validatedData, id: result.item_id || Date.now() + `-${i}`});
+                                localItemsAdded++;
+                            } else {
+                                errors.push(`Row ${rowIndex + 1}: Server Error - ${result.message || 'Unknown error'}`);
+                            }
+                        } catch (validationError) {
+                            errors.push(validationError.message); // Error from validateItemData
+                        }
+                    }
+
+                    filterAndDisplayInventory(); // Update table and chart with locally added items
+
+                    if (errors.length > 0) {
+                        if (itemsAddedToServer > 0) {
+                            displaySuccessMessage(`${itemsAddedToServer} item(s) added to server successfully from the file, but some rows had errors.`);
+                        }
+                        displayErrorMessage(`Errors encountered during upload:\n- ${errors.slice(0,10).join('\n- ')} ${errors.length > 10 ? `\n...and ${errors.length-10} more errors.` : ''}`);
+                    } else if (itemsAddedToServer > 0) {
+                        displaySuccessMessage(`Successfully added ${itemsAddedToServer} item(s) from ${selectedFile.name} to the server.`);
+                    } else {
+                         if (jsonData.length === 0) displayErrorMessage(`The selected file '${selectedFile.name}' appears to be empty or does not contain data in the first sheet.`);
+                         else displayErrorMessage(`No valid items found or added from ${selectedFile.name}. Check file format, headers, and content.`);
+                    }
+
+                } catch (error) {
+                    console.error("Error processing Excel file:", error);
+                    displayErrorMessage(`Failed to process the Excel file. Error: ${error.message}`);
+                } finally {
+                     fileInput.value = ''; fileNameDisplay.textContent = 'No file chosen';
+                     selectedFile = null; uploadButton.disabled = true;
+                     uploadButton.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Import Data`;
+                }
+            };
+            reader.onerror = function(event) {
+                console.error("File reading error:", event.target.error);
+                displayErrorMessage("Error reading the selected file.");
+                fileInput.value = ''; fileNameDisplay.textContent = 'No file chosen';
+                selectedFile = null; uploadButton.disabled = true;
+                uploadButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Import Data`;
+            };
+            reader.readAsBinaryString(selectedFile);
+        }
+
+        /** Clears the search input and resets the table view. */
+        function clearSearch() {
+            searchInput.value = '';
+            filterAndDisplayInventory();
+        }
+
+        // --- Event Listeners ---
+        inventoryForm.addEventListener('submit', addItemManually);
+        searchButtonEl.addEventListener('click', filterAndDisplayInventory);
+        searchInput.addEventListener('keypress', function(event) { if (event.key === 'Enter') { event.preventDefault(); filterAndDisplayInventory(); } });
+        clearSearchButton.addEventListener('click', clearSearch);
+        fileInput.addEventListener('change', handleFileSelect);
+        uploadButton.addEventListener('click', processExcelFile);
+
+        // --- Initial Setup ---
+        // TODO: Implement fetching initial inventory from server if needed
+        // async function fetchInitialInventory() {
+        // try {
+        // const response = await fetch('php/api_get_inventory.php');
+        // const data = await response.json();
+        // if (data.success && Array.isArray(data.inventory)) {
+        // inventory = data.inventory;
+        // } else {
+        // inventory = []; // Fallback to empty if fetch fails or data is not array
+        // console.error("Failed to fetch initial inventory or data format incorrect:", data.message);
+        // }
+        // } catch (error) {
+        // console.error("Error fetching initial inventory:", error);
+        // inventory = []; // Fallback
+        // }
+        // filterAndDisplayInventory(); // Display initially fetched or empty data
+        // }
+        // fetchInitialInventory();
+
+        // For now, just display based on the empty local array
+        filterAndDisplayInventory();
+        uploadButton.disabled = true; // Disable upload initially
+
+    </script>
+</body>
+</html>

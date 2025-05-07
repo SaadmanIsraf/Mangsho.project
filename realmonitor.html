@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meat Inventory & Environmental Monitoring</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Basic styling and scrollbar customization */
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Subtle gradient background */
+            background: linear-gradient(to bottom right, #f3f4f6, #e5e7eb);
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #a3a3a3; border-radius: 10px; } /* Slightly lighter thumb */
+        ::-webkit-scrollbar-thumb:hover { background: #737373; } /* Slightly darker hover */
+
+        /* Blinking dot animation for status indicator */
+        .blinking-dot {
+            height: 12px; /* Slightly larger */
+            width: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: blink-animation 1.2s infinite ease-in-out; /* Smoother timing */
+            box-shadow: 0 0 5px currentColor; /* Add a subtle glow */
+           }
+        .blinking-dot.green { background-color: #22c55e; color: #22c55e; }
+        .blinking-dot.yellow { background-color: #f59e0b; color: #f59e0b; }
+        .blinking-dot.red { background-color: #ef4444; color: #ef4444; }
+        @keyframes blink-animation {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.9); } /* Add slight scale */
+        }
+
+        /* Status text colors - slightly bolder */
+        .status-ok { color: #16a34a; font-weight: 500; } /* Tailwind green-700, medium weight */
+        .status-warning { color: #d97706; font-weight: 500; } /* Tailwind amber-600, medium weight */
+        .status-alert { color: #dc2626; font-weight: 500; } /* Tailwind red-600, medium weight */
+
+        /* Card styling enhancements */
+        .dashboard-card {
+            background-color: white;
+            border-radius: 0.75rem; /* Slightly larger radius */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); /* Softer shadow */
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out; /* Smooth transitions */
+            border: 1px solid #e5e7eb; /* Subtle border */
+        }
+        .dashboard-card:hover {
+            transform: translateY(-4px) scale(1.02); /* Lift and slightly scale on hover */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Enhanced shadow on hover */
+        }
+
+        /* Style adjustments for better visual hierarchy */
+        h1 { color: #1f2937; } /* Darker heading */
+        h2.card-title { color: #374151; font-weight: 600; } /* Slightly darker card titles */
+        .value-unit { color: #6b7280; } /* Consistent gray for units */
+        .activity-log-entry span:first-child { /* Ensure dot aligns well */
+            margin-top: 0.125rem;
+        }
+
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="container mx-auto">
+        <header class="mb-8 flex flex-col md:flex-row justify-between md:items-center">
+            <h1 class="text-2xl lg:text-3xl font-bold mb-2 md:mb-0">Meat Inventory & Environmental Monitoring</h1>
+            <div class="flex items-center space-x-3 text-sm text-gray-600"> <span class="blinking-dot green" id="system-status-indicator"></span>
+                <span id="last-updated">Last updated: Just now</span>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+            <div class="dashboard-card p-4 md:p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="card-title text-base md:text-lg">Total Inventory</h2>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" /></svg>
+                </div>
+                <p class="text-3xl md:text-4xl font-bold text-gray-900" id="total-inventory-value">0 <span class="text-base md:text-lg font-normal value-unit">kg</span></p>
+                <p class="text-xs text-gray-500 mt-1">Max Capacity: <span id="max-capacity">900</span> kg</p>
+                <div class="text-xs md:text-sm text-gray-600 mt-2 space-y-1 border-t pt-2">
+                    <div>Chicken: <span class="font-medium text-gray-800" id="chicken-total">0</span> kg</div>
+                    <div>Mutton: <span class="font-medium text-gray-800" id="mutton-total">0</span> kg</div>
+                    <div>Beef: <span class="font-medium text-gray-800" id="beef-total">0</span> kg</div>
+                </div>
+            </div>
+
+            <div class="dashboard-card p-4 md:p-6 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="card-title text-base md:text-lg">Low Stock Items (Ranked) <span id="low-stock-count-badge" class="text-sm font-normal text-yellow-600">(0)</span></h2>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                </div>
+                <div class="flex-grow overflow-y-auto max-h-24 text-sm space-y-1" id="low-stock-list">
+                    <p class="text-gray-500 italic">No items currently low.</p>
+                </div>
+                <p class="text-xs text-gray-500 mt-2 pt-1 border-t border-gray-100">Threshold: <span id="low-stock-threshold">125</span>kg</p>
+             </div>
+
+            <div class="dashboard-card p-4 md:p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="card-title text-base md:text-lg">Cold Storage Temp</h2>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <p class="text-3xl md:text-4xl font-bold text-gray-900" id="storage-temp">-18.5 <span class="text-base md:text-lg font-normal value-unit">°C</span></p>
+                <p class="text-xs md:text-sm mt-1 status-ok" id="storage-temp-status">Avg. Stable</p>
+            </div>
+
+            <div class="dashboard-card p-4 md:p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="card-title text-base md:text-lg">Storage Humidity</h2>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                </div>
+                <p class="text-3xl md:text-4xl font-bold text-gray-900" id="storage-humidity">85 <span class="text-base md:text-lg font-normal value-unit">%</span></p>
+                <p class="text-xs md:text-sm mt-1 status-ok" id="humidity-status">Optimal Level</p>
+            </div>
+
+            <div class="dashboard-card p-4 md:p-6 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="card-title text-base md:text-lg">Expiring Soon <span id="expiring-batches-count-badge" class="text-sm font-normal text-red-600">(0)</span></h2>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <p class="text-3xl md:text-4xl font-bold text-gray-900 mb-1" id="total-expiring-quantity">0 <span class="text-base md:text-lg font-normal value-unit">kg</span></p>
+                <div class="text-xs md:text-sm text-gray-600 mb-2 space-y-1 border-t pt-2">
+                    <div>Chicken Expiring: <span class="font-medium text-gray-800" id="chicken-expiring-total">0</span> kg</div>
+                    <div>Mutton Expiring: <span class="font-medium text-gray-800" id="mutton-expiring-total">0</span> kg</div>
+                    <div>Beef Expiring: <span class="font-medium text-gray-800" id="beef-expiring-total">0</span> kg</div>
+                </div>
+                <h3 class="text-sm font-semibold text-gray-700 mt-2 mb-1 border-t pt-2">Expiring Batches:</h3>
+                <div class="flex-grow overflow-y-auto max-h-24 text-sm space-y-1" id="expiring-batches-list">
+                    <p class="text-gray-500 italic">No batches expiring soon.</p>
+                </div>
+                <p class="text-xs text-gray-500 mt-2 pt-1 border-t border-gray-100">Threshold: <span id="expiry-threshold-days">7</span> days</p>
+            </div>
+
+            <div class="dashboard-card p-4 md:p-6">
+                <h2 class="card-title text-base md:text-lg mb-3">Storage Unit Status</h2>
+                <div class="space-y-2 text-xs md:text-sm" id="storage-unit-status">
+                    </div>
+            </div>
+
+            <div class="dashboard-card p-4 md:p-6">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="card-title text-base md:text-lg">Transport Unit Status</h2>
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+                <div class="space-y-2 text-xs md:text-sm" id="transport-unit-status">
+                    </div>
+            </div>
+
+            <div class="dashboard-card md:col-span-2 p-4 md:p-6">
+                <h2 class="card-title text-base md:text-lg mb-4">Inventory Breakdown</h2>
+                <div class="relative h-48 md:h-64">
+                    <canvas id="inventoryChart"></canvas>
+                </div>
+            </div>
+
+            <div class="dashboard-card md:col-span-2 lg:col-span-2 p-4 md:p-6">
+                <h2 class="card-title text-base md:text-lg mb-4">Environmental Trends (Last Hour)</h2>
+                <div class="relative h-48 md:h-64">
+                    <canvas id="environmentalChart"></canvas>
+                </div>
+            </div>
+
+            <div class="dashboard-card md:col-span-2 lg:col-span-4 p-4 md:p-6">
+                <h2 class="card-title text-base md:text-lg mb-4">Recent Activity</h2>
+                <div class="space-y-3 max-h-48 md:max-h-64 overflow-y-auto" id="activity-log">
+                    </div>
+            </div>
+
+        </div> </div> <script>
+    // --- Chart Instances ---
+    let inventoryChart;
+    let environmentalChart;
+
+    // --- DOM Element References ---
+    const totalInventoryEl = document.getElementById('total-inventory-value');
+    const chickenTotalEl = document.getElementById('chicken-total');
+    const muttonTotalEl = document.getElementById('mutton-total');
+    const beefTotalEl = document.getElementById('beef-total');
+    const maxCapacityEl = document.getElementById('max-capacity');
+
+    const lowStockListEl = document.getElementById('low-stock-list');
+    const lowStockCountBadgeEl = document.getElementById('low-stock-count-badge');
+    const lowStockThreshold = 125; // Low stock threshold in kg
+    document.getElementById('low-stock-threshold').textContent = lowStockThreshold;
+
+    const storageTempEl = document.getElementById('storage-temp');
+    const storageTempStatusEl = document.getElementById('storage-temp-status');
+    const storageHumidityEl = document.getElementById('storage-humidity');
+    const humidityStatusEl = document.getElementById('humidity-status');
+    const storageUnitStatusEl = document.getElementById('storage-unit-status');
+    const transportUnitStatusEl = document.getElementById('transport-unit-status');
+    const activityLogEl = document.getElementById('activity-log');
+    const lastUpdatedEl = document.getElementById('last-updated');
+    const systemStatusIndicatorEl = document.getElementById('system-status-indicator');
+
+    const expiringBatchesListEl = document.getElementById('expiring-batches-list');
+    const expiringBatchesCountBadgeEl = document.getElementById('expiring-batches-count-badge');
+    const totalExpiringQuantityEl = document.getElementById('total-expiring-quantity');
+    const chickenExpiringTotalEl = document.getElementById('chicken-expiring-total');
+    const muttonExpiringTotalEl = document.getElementById('mutton-expiring-total');
+    const beefExpiringTotalEl = document.getElementById('beef-expiring-total');
+
+
+    // --- Simulation Data & Constants ---
+    const MAX_TOTAL_INVENTORY = 900; // Max total inventory capacity in kg
+    maxCapacityEl.textContent = MAX_TOTAL_INVENTORY.toLocaleString();
+    const EXPIRY_THRESHOLD_DAYS = 7; // Days within which a batch is considered "expiring soon"
+    document.getElementById('expiry-threshold-days').textContent = EXPIRY_THRESHOLD_DAYS;
+
+
+    // Initial inventory data
+    let inventoryItems = [
+        { id: 1, name: 'Chicken', type: 'Chicken', quantity: 250, threshold: lowStockThreshold, loggedLow: false },
+        { id: 2, name: 'Mutton', type: 'Mutton', quantity: 240, threshold: lowStockThreshold, loggedLow: false },
+        { id: 3, name: 'Beef', type: 'Beef', quantity: 260, threshold: lowStockThreshold, loggedLow: false }
+    ];
+
+    // Data for meat batches with expiry dates
+    let meatBatches = []; // Will be populated in DOMContentLoaded
+
+    // Initial storage unit data
+    const storageUnits = [
+        { id: 'Freezer Unit #1', temp: -26.5, targetTemp: -28, humidity: 90, status: 'OK', tempThreshold: { low: -30, high: -25 }, humidityThreshold: { low: 80, high: 90 } },
+        { id: 'Freezer Unit #2', temp: -27.0, targetTemp: -28, humidity: 92, status: 'OK', tempThreshold: { low: -30, high: -25 }, humidityThreshold: { low: 80, high: 90 } },
+        { id: 'Freezer Unit #3', temp: -25.8, targetTemp: -27, humidity: 88, status: 'OK', tempThreshold: { low: -30, high: -25 }, humidityThreshold: { low: 80, high: 90 } },
+        { id: 'Chiller Unit #A', temp: -15.0, targetTemp: -16.5, humidity: 93, status: 'Temp High', tempThreshold: { low: -18, high: -15 }, humidityThreshold: { low: 85, high: 95 } },
+        { id: 'Chiller Unit #B', temp: -16.2, targetTemp: -17, humidity: 90, status: 'OK', tempThreshold: { low: -18, high: -15 }, humidityThreshold: { low: 85, high: 95 } }
+    ];
+
+    // Initial transport unit data
+    const transportUnits = [
+        { id: '#TRK-03', temp: -17.2, status: 'Stable', location: 'En Route', tempThreshold: { low: -20, high: -15 }, loggedAlert: false },
+        { id: '#TRK-07', temp: -18.0, status: 'Stable', location: 'Warehouse', tempThreshold: { low: -20, high: -15 }, loggedAlert: false },
+        { id: '#TRK-11', temp: -16.5, status: 'Stable', location: 'City Limits', tempThreshold: { low: -20, high: -15 }, loggedAlert: false },
+        { id: '#TRK-15', temp: -19.1, status: 'Stable', location: 'Highway A1', tempThreshold: { low: -20, high: -15 }, loggedAlert: false },
+        { id: '#TRK-22', temp: -17.8, status: 'Stable', location: 'Near Delivery', tempThreshold: { low: -20, high: -15 }, loggedAlert: false },
+        { id: '#TRK-25', temp: -15.9, status: 'Stable', location: 'Loading Dock', tempThreshold: { low: -20, high: -15 }, loggedAlert: false },
+        { id: '#TRK-31', temp: -18.5, status: 'Stable', location: 'Interstate', tempThreshold: { low: -20, high: -15 }, loggedAlert: false }
+    ];
+
+    // Data for the environmental chart
+    let environmentalData = { labels: [], storageTemps: [], humidities: [], transportTemps: [] };
+    const MAX_DATA_POINTS = 30; // Maximum data points to show on the environmental chart
+
+    // --- Utility Functions ---
+    function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+    function getRandomFloat(min, max, decimals) { return parseFloat((Math.random() * (max - min) + min).toFixed(decimals)); }
+    function getCurrentTimestamp() { return new Date(); }
+
+    function daysUntil(targetDate) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const target = new Date(targetDate);
+        target.setHours(0,0,0,0);
+        const diffTime = target - today;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    // --- Status Check Function ---
+    function checkStatusClass(value, thresholds) {
+        if (value < thresholds.low) return 'status-alert';
+        if (value > thresholds.high) return 'status-warning';
+        return 'status-ok';
+    }
+
+    // --- Chart Creation ---
+    function createInventoryChart() {
+        const ctx = document.getElementById('inventoryChart').getContext('2d');
+        const initialData = {
+            labels: ['Chicken', 'Mutton', 'Beef'],
+            datasets: [{
+                label: 'Inventory (kg)', data: [0, 0, 0],
+                backgroundColor: ['rgba(245, 158, 11, 0.7)', 'rgba(16, 185, 129, 0.7)', 'rgba(239, 68, 68, 0.7)'],
+                borderColor: ['#F59E0B', '#10B981', '#EF4444'],
+                borderWidth: 1, borderRadius: 6
+            }]
+        };
+        if (inventoryChart) inventoryChart.destroy();
+        inventoryChart = new Chart(ctx, {
+            type: 'bar', data: initialData,
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#e5e7eb' } },
+                    x: { grid: { display: false } }
+                },
+                plugins: { legend: { display: false }, animation: { duration: 500 } }
+               }
+        });
+    }
+
+    function createEnvironmentalChart() {
+        const ctx = document.getElementById('environmentalChart').getContext('2d');
+        if (environmentalChart) environmentalChart.destroy();
+        environmentalChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: environmentalData.labels,
+                datasets: [
+                    { label: 'Storage Temp (°C)', data: environmentalData.storageTemps, borderColor: 'rgb(56, 189, 248)', tension: 0.1, yAxisID: 'yTemp', borderWidth: 2.5 },
+                    { label: 'Humidity (%)', data: environmentalData.humidities, borderColor: 'rgb(34, 197, 94)', tension: 0.1, yAxisID: 'yHumidity', borderWidth: 2.5 },
+                    { label: 'Avg Transport Temp (°C)', data: environmentalData.transportTemps, borderColor: 'rgb(249, 115, 22)', tension: 0.1, yAxisID: 'yTemp', borderDash: [5, 5], borderWidth: 2.5 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: { type: 'time', time: { unit: 'minute', tooltipFormat: 'T', displayFormats: { minute: 'HH:mm' } }, title: { display: true, text: 'Time' }, grid: { color: '#e5e7eb' } },
+                    yTemp: { 
+                        type: 'linear', 
+                        display: true, 
+                        position: 'left', 
+                        title: { display: true, text: 'Temperature (°C)' }, 
+                        grid: { color: '#e5e7eb' },
+                        grace: '10%'
+                    },
+                    yHumidity: { 
+                        type: 'linear', 
+                        display: true, 
+                        position: 'right', 
+                        title: { display: true, text: 'Humidity (%)' }, 
+                        grid: { drawOnChartArea: false },
+                        grace: '10%'
+                    }
+                },
+                plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false }, animation: { duration: 0 } }
+            }
+        });
+    }
+
+    // --- Activity Log Function ---
+    function addActivityLog(message, level = 'info', type = 'system') {
+        const logEntry = document.createElement('div');
+        logEntry.className = 'activity-log-entry flex items-center text-sm p-1.5 border-b border-gray-100 last:border-b-0';
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let dotColor = 'bg-blue-500';
+        if (type === 'inventory') dotColor = 'bg-purple-500';
+        if (type === 'storage') dotColor = 'bg-cyan-500';
+        if (type === 'transport') dotColor = 'bg-orange-500';
+
+        if (level === 'success') dotColor = 'bg-green-500';
+        else if (level === 'warning') dotColor = 'bg-yellow-500';
+        else if (level === 'error') dotColor = 'bg-red-500';
+
+        logEntry.innerHTML = `<span class="w-2 h-2 ${dotColor} rounded-full mr-2 flex-shrink-0"></span><span class="text-gray-500 mr-2">[${timeString}]</span><span class="text-gray-800">${message}</span>`;
+        activityLogEl.insertBefore(logEntry, activityLogEl.firstChild);
+        if (activityLogEl.children.length > 25) {
+            activityLogEl.removeChild(activityLogEl.lastChild);
+        }
+    }
+
+   // --- Update Low Stock List ---
+   function updateLowStockList() {
+        let lowStockItems = inventoryItems.filter(item => item.quantity < lowStockThreshold);
+        lowStockItems.sort((a, b) => a.quantity - b.quantity);
+
+        lowStockListEl.innerHTML = '';
+        if (lowStockItems.length > 0) {
+            lowStockItems.forEach(item => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'py-0.5';
+                itemEl.innerHTML = `${item.name} <span class="text-gray-500">(${item.quantity.toLocaleString()}kg)</span>`;
+                lowStockListEl.appendChild(itemEl);
+            });
+            lowStockCountBadgeEl.textContent = `(${lowStockItems.length})`;
+        } else {
+            lowStockListEl.innerHTML = `<p class="text-gray-500 italic">No items currently low.</p>`;
+            lowStockCountBadgeEl.textContent = `(0)`;
+        }
+       }
+
+    // --- Update Expiring Batches List ---
+    function updateExpiringBatchesList() {
+        const soonToExpireBatches = meatBatches.filter(batch => {
+            const daysLeft = daysUntil(batch.expiryDate);
+            return daysLeft >= 0 && daysLeft <= EXPIRY_THRESHOLD_DAYS;
+        }).sort((a, b) => new Date(a.expiryDate) - new Date(b.expiryDate));
+
+        expiringBatchesListEl.innerHTML = ''; 
+
+        let totalExpiringKg = 0;
+        let expiringByType = { Chicken: 0, Mutton: 0, Beef: 0 };
+
+        if (soonToExpireBatches.length > 0) {
+            soonToExpireBatches.forEach(batch => {
+                totalExpiringKg += batch.quantity;
+                if (batch.meatType === 'Chicken') expiringByType.Chicken += batch.quantity;
+                else if (batch.meatType === 'Mutton') expiringByType.Mutton += batch.quantity;
+                else if (batch.meatType === 'Beef') expiringByType.Beef += batch.quantity;
+
+                const daysLeft = daysUntil(batch.expiryDate);
+                const itemEl = document.createElement('div');
+                itemEl.className = 'py-0.5 text-xs';
+                let daysText = '';
+                let textColor = 'text-gray-700';
+
+                if (daysLeft === 0) {
+                    daysText = 'Expires today';
+                    textColor = 'text-red-600 font-semibold';
+                } else if (daysLeft === 1) {
+                    daysText = 'Expires in 1 day';
+                    textColor = 'text-yellow-600 font-semibold';
+                } else {
+                    daysText = `Expires in ${daysLeft} days`;
+                    textColor = daysLeft <= 3 ? 'text-yellow-700' : 'text-gray-600';
+                }
+
+                itemEl.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-medium text-gray-800">${batch.id} (${batch.meatType})</span>
+                        <span class="${textColor}">${daysText}</span>
+                    </div>
+                    <div class="text-gray-500">${batch.quantity.toLocaleString()} kg</div>
+                `;
+                expiringBatchesListEl.appendChild(itemEl); 
+
+                if (daysLeft <= EXPIRY_THRESHOLD_DAYS && daysLeft > 1 && !batch.loggedSoonExpiryWarning) {
+                    addActivityLog(`EXPIRY WARNING: Batch ${batch.id} (${batch.meatType}, ${batch.quantity}kg) expires in ${daysLeft} days.`, 'warning', 'inventory');
+                    batch.loggedSoonExpiryWarning = true;
+                }
+                
+                if (daysLeft <= 1 && !batch.loggedCriticalExpiryWarning) {
+                    addActivityLog(`CRITICAL EXPIRY: Batch ${batch.id} (${batch.meatType}, ${batch.quantity}kg) expires ${daysLeft === 0 ? 'today' : 'in 1 day'}.`, 'error', 'inventory');
+                    batch.loggedCriticalExpiryWarning = true;
+                }
+            });
+            expiringBatchesCountBadgeEl.textContent = `(${soonToExpireBatches.length})`;
+        } else {
+            expiringBatchesListEl.innerHTML = `<p class="text-gray-500 italic">No batches expiring soon.</p>`;
+            expiringBatchesCountBadgeEl.textContent = `(0)`;
+        }
+
+        totalExpiringQuantityEl.innerHTML = `${totalExpiringKg.toLocaleString()} <span class="text-base md:text-lg font-normal value-unit">kg</span>`;
+        chickenExpiringTotalEl.textContent = expiringByType.Chicken.toLocaleString();
+        muttonExpiringTotalEl.textContent = expiringByType.Mutton.toLocaleString();
+        beefExpiringTotalEl.textContent = expiringByType.Beef.toLocaleString();
+
+        // Changed from 0.20 to 0.50 to make updates even faster
+        if (Math.random() < 0.50) { 
+            const batchesToRemove = meatBatches.filter(batch => daysUntil(batch.expiryDate) < -2);
+            batchesToRemove.forEach(batch => {
+                addActivityLog(`Batch ${batch.id} (${batch.meatType}, ${batch.quantity}kg) removed from system (fully expired).`, 'info', 'inventory');
+            });
+            meatBatches = meatBatches.filter(batch => daysUntil(batch.expiryDate) >= -2);
+
+            if (meatBatches.length < 10) {
+                const meatTypes = ['Chicken', 'Mutton', 'Beef'];
+                const randomType = meatTypes[getRandomInt(0, meatTypes.length - 1)];
+                const newBatchId = `${randomType.substring(0,2).toUpperCase()}${getRandomInt(100,999)}`;
+                const newQuantity = getRandomInt(20, 100);
+                const newExpiryDays = getRandomInt(1, 30);
+                const newBatch = {
+                    id: newBatchId,
+                    meatType: randomType,
+                    quantity: newQuantity,
+                    expiryDate: new Date(new Date().setDate(new Date().getDate() + newExpiryDays)),
+                    loggedSoonExpiryWarning: false,
+                    loggedCriticalExpiryWarning: false
+                };
+                meatBatches.push(newBatch);
+                addActivityLog(`New batch ${newBatch.id} (${newBatch.meatType}, ${newBatch.quantity}kg) received, expires in ${newExpiryDays} days.`, 'info', 'inventory');
+            }
+        }
+    }
+
+
+    // --- Main Update Function (Simulation Loop) ---
+    function updateDashboard() {
+        const now = getCurrentTimestamp();
+        let overallStatus = 'green';
+        let alertGeneratedThisCycle = false;
+
+        // 1. ** SIMULATE INVENTORY CHANGES **
+        let currentTotalInventory = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
+        let inventoryTotalsByType = { Chicken: 0, Mutton: 0, Beef: 0 };
+
+        inventoryItems.forEach(item => {
+            let change = 0;
+            if (Math.random() < 0.08) {
+                let maxPossibleToAdd = MAX_TOTAL_INVENTORY - currentTotalInventory;
+                if (maxPossibleToAdd > 0) {
+                    let potentialAmountAdded = getRandomInt(40, 200);
+                    let actualAmountAdded = Math.min(potentialAmountAdded, maxPossibleToAdd);
+                    change = actualAmountAdded;
+                    addActivityLog(`Received ${actualAmountAdded.toLocaleString()}kg of ${item.name}`, 'success', 'inventory');
+                    currentTotalInventory += actualAmountAdded;
+                }
+            } else {
+                 if (Math.random() < 0.5) {
+                    const passiveChange = getRandomInt(-10, 0);
+                     if (item.quantity > 0 && passiveChange < 0) {
+                         change = passiveChange;
+                    }
+                 }
+            }
+            item.quantity += change;
+            item.quantity = Math.max(0, item.quantity);
+
+            if (item.type === 'Chicken') inventoryTotalsByType.Chicken = item.quantity;
+            else if (item.type === 'Mutton') inventoryTotalsByType.Mutton = item.quantity;
+            else if (item.type === 'Beef') inventoryTotalsByType.Beef = item.quantity;
+
+            if (item.quantity < lowStockThreshold) {
+                if (!item.loggedLow) {
+                    addActivityLog(`Low stock warning: ${item.name} (${item.quantity.toLocaleString()}kg left)`, 'warning', 'inventory');
+                    item.loggedLow = true;
+                    alertGeneratedThisCycle = true;
+                    if (overallStatus === 'green') overallStatus = 'yellow';
+                }
+            } else {
+                if (item.loggedLow) {
+                    item.loggedLow = false;
+                }
+            }
+        });
+
+        const finalTotalInventory = inventoryItems.reduce((sum, item) => sum + item.quantity, 0);
+        totalInventoryEl.innerHTML = `${finalTotalInventory.toLocaleString()} <span class="text-base md:text-lg font-normal value-unit">kg</span>`;
+        chickenTotalEl.textContent = inventoryTotalsByType.Chicken.toLocaleString();
+        muttonTotalEl.textContent = inventoryTotalsByType.Mutton.toLocaleString();
+        beefTotalEl.textContent = inventoryTotalsByType.Beef.toLocaleString();
+        updateLowStockList();
+
+        if (inventoryChart && inventoryChart.data) {
+            inventoryChart.data.datasets[0].data = [
+                inventoryTotalsByType.Chicken,
+                inventoryTotalsByType.Mutton,
+                inventoryTotalsByType.Beef
+            ];
+            inventoryChart.update();
+        }
+        
+        updateExpiringBatchesList();
+
+
+        // 2. ** SIMULATE STORAGE UNIT CHANGES **
+        let totalStorageTemp = 0;
+        let totalStorageHumidity = 0;
+        let storageUnitHtml = '';
+        storageUnits.forEach(unit => {
+            if (unit.tempThreshold.low <= -25) {
+                 if (Math.random() < 0.1) unit.targetTemp = getRandomFloat(-30, -25, 1);
+                 let tempDiff = unit.targetTemp - unit.temp;
+                 let driftFactor = (unit.temp < unit.tempThreshold.low || unit.temp > unit.tempThreshold.high) ? 0.2 : 0.1;
+                 unit.temp += (tempDiff * driftFactor) + getRandomFloat(-0.5, 0.5, 1);
+                 unit.temp = Math.max(-32, Math.min(-23, unit.temp));
+            } else {
+                 if (Math.random() < 0.1) unit.targetTemp = getRandomFloat(-18, -15, 1);
+                 let tempDiff = unit.targetTemp - unit.temp;
+                 let driftFactor = (unit.temp < unit.tempThreshold.low || unit.temp > unit.tempThreshold.high) ? 0.2 : 0.1;
+                 unit.temp += (tempDiff * driftFactor) + getRandomFloat(-0.5, 0.5, 1);
+                 unit.temp = Math.max(-20, Math.min(-13, unit.temp));
+            }
+            unit.humidity += getRandomFloat(-0.7, 0.3, 0);
+            unit.humidity = Math.max(70, Math.min(100, unit.humidity));
+
+            let tempStatusClass = checkStatusClass(unit.temp, unit.tempThreshold);
+            let humidityStatusClass = checkStatusClass(unit.humidity, unit.humidityThreshold);
+            let combinedStatusClass = 'status-ok';
+            let currentStatusText = 'OK';
+
+            if (tempStatusClass === 'status-alert' || humidityStatusClass === 'status-alert') {
+                combinedStatusClass = 'status-alert';
+                currentStatusText = tempStatusClass === 'status-alert' ? 'Temp Alert' : 'Humidity Alert';
+                if(tempStatusClass === 'status-alert' && humidityStatusClass === 'status-alert') currentStatusText = 'Temp/Humidity Alert';
+            } else if (tempStatusClass === 'status-warning' || humidityStatusClass === 'status-warning') {
+                combinedStatusClass = 'status-warning';
+                 currentStatusText = tempStatusClass === 'status-warning' ? 'Temp Warning' : 'Humidity Warning';
+                 if(tempStatusClass === 'status-warning' && humidityStatusClass === 'status-warning') currentStatusText = 'Temp/Humidity Warning';
+            }
+
+            if (currentStatusText !== 'OK' && unit.status === 'OK') {
+                addActivityLog(`ALERT: ${unit.id} ${currentStatusText} (T:${unit.temp.toFixed(1)}°C H:${unit.humidity.toFixed(0)}%)`, combinedStatusClass === 'status-alert' ? 'error' : 'warning', 'storage');
+                alertGeneratedThisCycle = true;
+            } else if (currentStatusText === 'OK' && unit.status !== 'OK') {
+                 addActivityLog(`Resolved: ${unit.id} back to normal (T:${unit.temp.toFixed(1)}°C H:${unit.humidity.toFixed(0)}%)`, 'success', 'storage');
+            }
+            unit.status = currentStatusText;
+
+            if (combinedStatusClass === 'status-alert') overallStatus = 'red';
+            else if (combinedStatusClass === 'status-warning' && overallStatus !== 'red') overallStatus = 'yellow';
+
+            storageUnitHtml += `<div class="flex justify-between items-center py-0.5"><span>${unit.id}</span><span class="font-medium ${combinedStatusClass}">${unit.status}</span></div>`;
+            totalStorageTemp += unit.temp;
+            totalStorageHumidity += unit.humidity;
+        });
+        storageUnitStatusEl.innerHTML = storageUnitHtml;
+
+        const avgStorageTemp = totalStorageTemp / storageUnits.length;
+        const avgStorageHumidity = totalStorageHumidity / storageUnits.length;
+        storageTempEl.innerHTML = `${avgStorageTemp.toFixed(1)} <span class="text-base md:text-lg font-normal value-unit">°C</span>`;
+        storageHumidityEl.innerHTML = `${avgStorageHumidity.toFixed(0)} <span class="text-base md:text-lg font-normal value-unit">%</span>`;
+
+        let avgTempStatusClass = checkStatusClass(avgStorageTemp, {low: -28, high: -20});
+        storageTempStatusEl.className = `text-xs md:text-sm mt-1 ${avgTempStatusClass}`;
+        storageTempStatusEl.textContent = avgTempStatusClass === 'status-ok' ? 'Avg. Stable' : (avgTempStatusClass === 'status-alert' ? 'Avg. Too Low' : 'Avg. Too High');
+
+        let avgHumidStatusClass = checkStatusClass(avgStorageHumidity, {low: 80, high: 95});
+        humidityStatusEl.className = `text-xs md:text-sm mt-1 ${avgHumidStatusClass}`;
+        humidityStatusEl.textContent = avgHumidStatusClass === 'status-ok' ? 'Optimal Level' : (avgHumidStatusClass === 'status-alert' ? 'Too Dry' : 'Too Humid');
+
+
+        // 3. ** SIMULATE TRANSPORT UNIT CHANGES **
+        let totalTransportTemp = 0;
+        let transportUnitHtml = '';
+        let overallTransportStatusClass = 'status-ok';
+        transportUnits.forEach(unit => {
+            unit.temp += getRandomFloat(-0.5, 0.5, 1);
+
+            if (Math.random() < 0.05) {
+                 unit.temp += getRandomFloat(1, 3, 1);
+                 if (!unit.loggedAlert) {
+                    addActivityLog(`Potential door opening on ${unit.id}. Temp: ${unit.temp.toFixed(1)}°C`, 'warning', 'transport');
+                    unit.loggedAlert = true;
+                 }
+                 alertGeneratedThisCycle = true;
+            }
+            unit.temp = Math.min(-10, unit.temp);
+
+            let currentUnitStatusClass = checkStatusClass(unit.temp, unit.tempThreshold);
+            let currentUnitStatusText = 'Stable';
+            if (currentUnitStatusClass === 'status-alert') currentUnitStatusText = 'Temp Alert';
+            else if (currentUnitStatusClass === 'status-warning') currentUnitStatusText = 'Temp Warning';
+
+            if (currentUnitStatusClass !== 'status-ok' && unit.status === 'Stable') {
+                addActivityLog(`ALERT: ${unit.id} temperature at ${unit.temp.toFixed(1)}°C`, currentUnitStatusClass === 'status-alert' ? 'error' : 'warning', 'transport');
+                unit.status = currentUnitStatusText;
+                unit.loggedAlert = true;
+                alertGeneratedThisCycle = true;
+            } else if (currentUnitStatusClass === 'status-ok' && unit.status !== 'Stable') {
+                 addActivityLog(`Resolved: ${unit.id} temperature stable at ${unit.temp.toFixed(1)}°C`, 'success', 'transport');
+                 unit.status = 'Stable';
+                 unit.loggedAlert = false;
+            }
+
+            if (currentUnitStatusClass === 'status-alert') overallTransportStatusClass = 'status-alert';
+            else if (currentUnitStatusClass === 'status-warning' && overallTransportStatusClass === 'status-ok') overallTransportStatusClass = 'status-warning';
+
+            transportUnitHtml += `
+                <div class="flex justify-between items-center py-0.5">
+                    <span>${unit.id}</span>
+                    <span class="text-gray-700">${unit.temp.toFixed(1)}°C</span>
+                    <span class="font-medium ${currentUnitStatusClass}">${unit.status}</span>
+                </div>`;
+            totalTransportTemp += unit.temp;
+        });
+        transportUnitStatusEl.innerHTML = transportUnitHtml;
+        if (overallTransportStatusClass === 'status-alert') overallStatus = 'red';
+        else if (overallTransportStatusClass === 'status-warning' && overallStatus === 'green') overallStatus = 'yellow';
+
+        const avgTransportTemp = transportUnits.length > 0 ? totalTransportTemp / transportUnits.length : -99;
+
+
+        // 4. ** UPDATE ENVIRONMENTAL CHART DATA **
+        environmentalData.labels.push(now);
+        environmentalData.storageTemps.push(avgStorageTemp);
+        environmentalData.humidities.push(avgStorageHumidity);
+        environmentalData.transportTemps.push(avgTransportTemp);
+
+        if (environmentalData.labels.length > MAX_DATA_POINTS) {
+            environmentalData.labels.shift();
+            environmentalData.storageTemps.shift();
+            environmentalData.humidities.shift();
+            environmentalData.transportTemps.shift();
+        }
+        
+        if (environmentalChart && environmentalChart.ctx) {
+            try {
+                environmentalChart.update();
+            } catch (e) {
+                console.error("Error updating environmental chart:", e);
+            }
+        }
+
+
+        // 5. ** UPDATE SYSTEM STATUS INDICATOR **
+        const criticalExpiry = meatBatches.some(batch => {
+            const daysLeft = daysUntil(batch.expiryDate);
+            return daysLeft >= 0 && daysLeft <= 1;
+        });
+        if (criticalExpiry && overallStatus === 'green') {
+            overallStatus = 'yellow';
+        }
+        
+        if (alertGeneratedThisCycle) {
+            if (overallStatus === 'green') overallStatus = 'yellow';
+        }
+        
+        const hasCriticalExpiryLog = meatBatches.some(batch => batch.loggedCriticalExpiryWarning && daysUntil(batch.expiryDate) <=1);
+        if(hasCriticalExpiryLog && overallStatus !== 'red') {
+            overallStatus = 'yellow';
+        }
+
+
+        systemStatusIndicatorEl.className = `blinking-dot ${overallStatus}`;
+
+        // 6. ** UPDATE TIMESTAMP **
+        lastUpdatedEl.textContent = `Last updated: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+    }
+
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', () => {
+        addActivityLog('System Initialized. Monitoring started.', 'info', 'system');
+
+        const todayForBatchInit = new Date();
+        meatBatches = [
+            { id: 'CKN001', meatType: 'Chicken', quantity: 50, expiryDate: new Date(new Date().setDate(todayForBatchInit.getDate() + 3)), loggedSoonExpiryWarning: false, loggedCriticalExpiryWarning: false },
+            { id: 'MTN005', meatType: 'Mutton', quantity: 30, expiryDate: new Date(new Date().setDate(todayForBatchInit.getDate() + 8)), loggedSoonExpiryWarning: false, loggedCriticalExpiryWarning: false },
+            { id: 'BEF012', meatType: 'Beef', quantity: 75, expiryDate: new Date(new Date().setDate(todayForBatchInit.getDate() + 1)), loggedSoonExpiryWarning: false, loggedCriticalExpiryWarning: false },
+            { id: 'CKN002', meatType: 'Chicken', quantity: 60, expiryDate: new Date(new Date().setDate(todayForBatchInit.getDate() + 15)), loggedSoonExpiryWarning: false, loggedCriticalExpiryWarning: false },
+            { id: 'MTN006', meatType: 'Mutton', quantity: 40, expiryDate: new Date(new Date().setDate(todayForBatchInit.getDate() + 5)), loggedSoonExpiryWarning: false, loggedCriticalExpiryWarning: false },
+            { id: 'BEF015', meatType: 'Beef', quantity: 25, expiryDate: new Date(new Date().setDate(todayForBatchInit.getDate() + 0)), loggedSoonExpiryWarning: false, loggedCriticalExpiryWarning: false }
+        ];
+
+        createInventoryChart();
+        createEnvironmentalChart();
+        updateDashboard();
+        setInterval(updateDashboard, 1000); 
+    });
+
+    // --- Resize Handling ---
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (inventoryChart) {
+                const currentInvData = inventoryChart.data.datasets[0].data;
+                createInventoryChart();
+                inventoryChart.data.datasets[0].data = currentInvData;
+                inventoryChart.update('none');
+            }
+
+            if (environmentalChart) {
+                createEnvironmentalChart();
+                environmentalChart.update('none');
+            }
+        }, 250);
+    });
+
+</script>
+
+</body>
+</html>
